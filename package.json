@@ -1,0 +1,41 @@
+{
+  "name": "zevapay",
+  "version": "1.0.0",
+  "description": "ZevaPay — Simple Payment Management for Bangladeshi merchants.",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "setup": "npm run db:up && npm run db:migrate && npm run db:seed",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:migrate": "npm --prefix db run migrate",
+    "db:seed": "npm --prefix db run seed",
+    "db:studio": "npm --prefix db run studio",
+    "dev": "concurrently -n api,web -c blue,magenta \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "build": "npm --prefix backend run build && npm --prefix frontend run build",
+    "typecheck": "npm --prefix backend run typecheck && npm --prefix frontend run typecheck",
+    "lint": "npm --prefix frontend run lint",
+    "test": "npm --prefix backend test",
+    "simulate": "npm --prefix backend run simulate"
+  },
+  "keywords": [
+    "zevapay",
+    "payments",
+    "bangladesh",
+    "bkash",
+    "nagad"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "concurrently": "^10.0.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^7.0.1",
+    "react-hook-form": "^7.91.0",
+    "recharts": "^3.10.1",
+    "zod": "^4.6.7"
+  }
+}

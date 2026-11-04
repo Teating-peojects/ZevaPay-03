@@ -1,0 +1,637 @@
+// ZevaPay — Prisma schema
+// PostgreSQL is the source of truth for merchants, devices, accounts and transactions.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../../backend/src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// Login identity of a person on the platform.
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  SUPPORT
+  MERCHANT_OWNER
+  MERCHANT_ADMIN
+  MERCHANT_MANAGER
+  MERCHANT_SUPPORT
+  MERCHANT_VIEWER
+}
+
+/// Lifecycle of a merchant organisation.
+enum MerchantStatus {
+  PENDING_REVIEW
+  ACTIVE
+  SUSPENDED
+}
+
+/// Lifecycle of a connected payment account.
+enum AccountStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+/// Connection state of an Android SMS Bridge device.
+enum DeviceStatus {
+  PENDING
+  ONLINE
+  OFFLINE
+}
+
+/// Processing state of a recorded payment notification.
+enum TransactionStatus {
+  CREATED
+  PENDING
+  REVIEW
+  CONFIRMED
+  FAILED
+  EXPIRED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  CREATED
+  PENDING
+  REVIEW
+  CONFIRMED
+  FAILED
+  EXPIRED
+  CANCELLED
+  REFUNDED
+}
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+/// The mobile financial services providers ZevaPay understands.
+enum PaymentProvider {
+  BKASH
+  NAGAD
+  ROCKET
+  UPAY
+}
+
+/// The kind of account held with a provider.
+enum AccountType {
+  PERSONAL
+  MERCHANT
+  AGENT
+  BUSINESS
+}
+
+/// How a session token was issued.
+enum SessionType {
+  ACCESS
+  REFRESH
+}
+
+/// Audit trail of sensitive actions.
+enum AuditAction {
+  REGISTER
+  LOGIN
+  LOGOUT
+  LOGIN_FAILED
+  PASSWORD_CHANGED
+  MERCHANT_STATUS_CHANGED
+  ACCOUNT_CREATED
+  ACCOUNT_REMOVED
+  DEVICE_PAIRED
+  DEVICE_DISCONNECTED
+  API_KEY_CREATED
+  API_KEY_REVOKED
+  TRANSACTION_REVIEWED
+  PAYMENT_CREATED
+  PAYMENT_STATUS_CHANGED
+  MERCHANT_UPDATED
+  EMAIL_VERIFIED
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+/// A person who can sign in.
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  role         UserRole @default(MERCHANT_OWNER)
+  phone        String?
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  emailVerifiedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  merchantId String?
+  merchant   Merchant? @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  sessions Session[]
+  apiKeys  ApiKey[]
+  reviews  Transaction[] @relation("TransactionReviewedBy")
+  auditLogs AuditLog[]
+  merchantMemberships MerchantMember[]
+  createdPayments Payment[] @relation("PaymentCreatedBy")
+  verificationTokens VerificationToken[]
+
+  @@index([merchantId])
+  @@index([role])
+}
+
+/// A merchant organisation — the tenant boundary for all merchant data.
+model Merchant {
+  id             String         @id @default(cuid())
+  businessName   String
+  ownerName      String
+  email          String
+  phone          String?
+  country        String         @default("Bangladesh")
+  plan           String         @default("Starter")
+  status         MerchantStatus @default(PENDING_REVIEW)
+  registrationDate DateTime      @default(now())
+  lastActiveAt   DateTime       @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users           User[]
+  paymentAccounts PaymentAccount[]
+  devices         Device[]
+  transactions    Transaction[]
+  apiKeys         ApiKey[]
+  pairingCodes    PairingCode[]
+  auditLogs       AuditLog[]
+  businessProfile BusinessProfile?
+  members         MerchantMember[]
+  payments        Payment[]
+  customers       Customer[]
+  paymentLinks    PaymentLink[]
+  invoices        Invoice[]
+  brands          Brand[]
+  webhookEndpoints WebhookEndpoint[]
+  apiRequestLogs ApiRequestLog[]
+  notifications Notification[]
+  subscriptions Subscription[]
+
+  @@index([status])
+}
+
+/// A connected mobile financial services account.
+model PaymentAccount {
+  id           String        @id @default(cuid())
+  provider     PaymentProvider
+  /// Full number. Only a masked form is ever returned by the API.
+  accountNumber String
+  accountType  AccountType
+  label        String
+  status       AccountStatus @default(PENDING)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  devices     Device[]
+  transactions Transaction[]
+  pairingCodes PairingCode[]
+
+  @@unique([merchantId, provider, accountNumber])
+  @@index([merchantId, status])
+}
+
+/// An Android SMS Bridge device that reports payment notifications.
+model Device {
+  id           String       @id @default(cuid())
+  name         String
+  /// Human-readable device identifier shown in the dashboard.
+  deviceId     String       @unique
+  status       DeviceStatus @default(PENDING)
+  androidVersion String?
+  lastActiveAt DateTime     @default(now())
+  connectedAt  DateTime     @default(now())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  /// Payment account this device reports notifications for.
+  connectedAccountId String?
+  connectedAccount   PaymentAccount? @relation(fields: [connectedAccountId], references: [id], onDelete: SetNull)
+
+  transactions Transaction[]
+  pairingCodes PairingCode[]
+  events DeviceEvent[]
+
+  @@index([merchantId, status])
+}
+
+/// A payment notification recorded from a device.
+model Transaction {
+  id           String            @id @default(cuid())
+  /// Human-facing transaction reference, e.g. TXN-100245.
+  reference    String            @unique
+  provider     PaymentProvider
+  /// Integer minor units (BDT 100.50 is 10050).
+  amountMinor  Int
+  currency     String            @default("BDT") @db.VarChar(3)
+  customerName String?
+  customerPhone String?
+  status       TransactionStatus @default(PENDING)
+  /// The raw notification exactly as the device received it.
+  rawNotification String
+  /// Parser confidence, 0..1. Below the threshold the row goes to REVIEW.
+  confidence    Float            @default(0)
+  /// Provider-side transaction identifier extracted from the message.
+  providerRef   String?
+  occurredAt    DateTime
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  accountId String?
+  account   PaymentAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  deviceId String?
+  device   Device? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  /// Admin or merchant staff member who resolved a REVIEW row.
+  reviewedById String?
+  reviewedBy   User?   @relation("TransactionReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime?
+  paymentId String?
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([merchantId, status])
+  @@index([merchantId, occurredAt])
+  @@index([provider, occurredAt])
+  @@index([status])
+  @@index([paymentId])
+}
+
+/// A short-lived pairing code used to bind a device to a merchant.
+model PairingCode {
+  id        String   @id @default(cuid())
+  /// Human-readable code shown in the dashboard, e.g. ZP-4821-KQ.
+  code      String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  /// Payment account the device will report notifications for.
+  connectedAccountId String?
+  connectedAccount   PaymentAccount? @relation(fields: [connectedAccountId], references: [id], onDelete: SetNull)
+
+  deviceId String?
+  device   Device? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  @@index([merchantId])
+  @@index([expiresAt])
+}
+
+/// An issued session token.
+model Session {
+  id           String      @id @default(cuid())
+  tokenHash    String      @unique
+  type         SessionType @default(ACCESS)
+  userAgent    String?
+  ipAddress    String?
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime    @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// A scoped API key for programmatic access.
+model ApiKey {
+  id          String    @id @default(cuid())
+  name        String
+  /// Only a prefix is shown after creation; the full value is never returned again.
+  keyPrefix   String
+  /// SHA-256 hash of the full key.
+  keyHash     String    @unique
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId])
+}
+
+/// An append-only audit trail of sensitive actions.
+model AuditLog {
+  id        String      @id @default(cuid())
+  action    AuditAction
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime    @default(now())
+
+  actorId String?
+  actor   User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  merchantId String?
+  merchant   Merchant? @relation(fields: [merchantId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([merchantId, createdAt])
+}
+
+// Extended commerce foundation. Tenant-owned records carry merchantId directly.
+model BusinessProfile {
+  id String @id @default(cuid())
+  legalName String?
+  registrationNumber String?
+  website String?
+  address Json?
+  settings Json @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  merchantId String @unique
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+}
+model MerchantMember {
+  id String @id @default(cuid())
+  status String @default("ACTIVE")
+  invitedAt DateTime @default(now())
+  joinedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  merchantId String
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roles MemberRole[]
+  @@unique([merchantId, userId])
+  @@index([merchantId, status])
+}
+model Role {
+  id String @id @default(cuid())
+  name String @unique
+  description String?
+  isSystem Boolean @default(true)
+  createdAt DateTime @default(now())
+  permissions RolePermission[]
+  members MemberRole[]
+}
+model Permission {
+  id String @id @default(cuid())
+  key String @unique
+  description String
+  rolePermissions RolePermission[]
+}
+model RolePermission {
+  roleId String
+  permissionId String
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  @@id([roleId, permissionId])
+}
+model MemberRole {
+  memberId String
+  roleId String
+  member MerchantMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  @@id([memberId, roleId])
+}
+model Payment {
+  id String @id @default(cuid())
+  reference String @unique
+  amountMinor Int
+  currency String @default("BDT") @db.VarChar(3)
+  status PaymentStatus @default(CREATED)
+  description String?
+  metadata Json?
+  expiresAt DateTime?
+  confirmedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  merchantId String
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  customerId String?
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  createdById String?
+  createdBy User? @relation("PaymentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  attempts PaymentAttempt[]
+  transactions Transaction[]
+  @@index([merchantId, status, createdAt])
+  @@index([merchantId, reference])
+}
+model PaymentAttempt {
+  id String @id @default(cuid())
+  provider PaymentProvider
+  status PaymentStatus @default(PENDING)
+  amountMinor Int
+  currency String @default("BDT") @db.VarChar(3)
+  providerReference String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  paymentId String
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  @@index([paymentId, createdAt])
+}
+model Customer {
+  id String @id @default(cuid())
+  name String?
+  email String?
+  phone String?
+  notes String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  merchantId String
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  payments Payment[]
+  invoices Invoice[]
+  @@unique([merchantId, email])
+  @@unique([merchantId, phone])
+  @@index([merchantId, createdAt])
+}
+model PaymentLink {
+  id String @id @default(cuid())
+  slug String @unique
+  title String
+  amountMinor Int?
+  currency String @default("BDT") @db.VarChar(3)
+  isActive Boolean @default(true)
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  merchantId String
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  @@index([merchantId, isActive])
+}
+model Invoice {
+  id String @id @default(cuid())
+  number String
+  status InvoiceStatus @default(DRAFT)
+  currency String @default("BDT") @db.VarChar(3)
+  subtotalMinor Int @default(0)
+  taxMinor Int @default(0)
+  discountMinor Int @default(0)
+  totalMinor Int @default(0)
+  dueAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  merchantId String
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  customerId String?
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items InvoiceItem[]
+  @@unique([merchantId, number])
+  @@index([merchantId, status, createdAt])
+}
+model InvoiceItem {
+  id String @id @default(cuid())
+  description String
+  quantity Int @default(1)
+  unitPriceMinor Int
+  totalMinor Int
+  invoiceId String
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+model Brand {
+  id String @id @default(cuid())
+  name String
+  settings Json @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  merchantId String
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  domains BrandDomain[]
+  @@unique([merchantId, name])
+}
+model BrandDomain {
+  id String @id @default(cuid())
+  domain String @unique
+  createdAt DateTime @default(now())
+  brandId String
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+}
+model DeviceEvent {
+  id String @id @default(cuid())
+  type String
+  payload Json?
+  createdAt DateTime @default(now())
+  deviceId String
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  @@index([deviceId, createdAt])
+}
+model WebhookEndpoint {
+  id String @id @default(cuid())
+  url String
+  secretHash String
+  events String[]
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  merchantId String
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  deliveries WebhookDelivery[]
+  @@index([merchantId, isActive])
+}
+model WebhookDelivery {
+  id String @id @default(cuid())
+  event String
+  status String
+  attempts Int @default(0)
+  responseCode Int?
+  createdAt DateTime @default(now())
+  endpointId String
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  @@index([endpointId, createdAt])
+}
+model ApiRequestLog {
+  id String @id @default(cuid())
+  method String
+  path String
+  statusCode Int
+  durationMs Int
+  createdAt DateTime @default(now())
+  merchantId String?
+  merchant Merchant? @relation(fields: [merchantId], references: [id], onDelete: SetNull)
+  @@index([merchantId, createdAt])
+}
+model Plan {
+  id String @id @default(cuid())
+  code String @unique
+  name String
+  monthlyPriceMinor Int @default(0)
+  currency String @default("BDT") @db.VarChar(3)
+  limits Json @default("{}")
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  subscriptions Subscription[]
+}
+model Subscription {
+  id String @id @default(cuid())
+  status SubscriptionStatus @default(ACTIVE)
+  startedAt DateTime @default(now())
+  renewsAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  merchantId String
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  planId String
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Restrict)
+  @@index([merchantId, status])
+}
+model Notification {
+  id String @id @default(cuid())
+  channel String
+  event String
+  payload Json?
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  merchantId String
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  @@index([merchantId, createdAt])
+}
+model VerificationToken {
+  id String @id @default(cuid())
+  tokenHash String @unique
+  purpose String
+  expiresAt DateTime
+  usedAt DateTime?
+  createdAt DateTime @default(now())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, purpose, expiresAt])
+}

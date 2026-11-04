@@ -1,0 +1,42 @@
+{
+  "name": "@zevapay/backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ZevaPay API — Fastify + Prisma backend for payment management.",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "seed": "tsx ../db/seed/seed.ts",
+    "simulate": "tsx src/tools/simulate.ts",
+    "test": "vitest run"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@fastify/cookie": "^11.1.5",
+    "@fastify/cors": "^11.4.0",
+    "@fastify/helmet": "^13.2.0",
+    "@fastify/jwt": "^10.2.6",
+    "@fastify/rate-limit": "^11.2.1",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "argon2": "^0.45.1",
+    "dotenv": "^18.0.9",
+    "fastify": "^5.12.8",
+    "fastify-plugin": "^6.0.1",
+    "pg": "^8.23.1",
+    "pino": "^10.4.0",
+    "pino-pretty": "^13.2.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "prisma": "^7.10.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}
