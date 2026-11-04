@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/toast";
 import { apiFetch } from "@/lib/api-client";
 import { formatBDT, formatDateTimeShort } from "@/lib/format";
 import { dateRangeBounds } from "@/lib/date-range";
+import { STATUS_FILTER_OPTIONS } from "@/lib/payment-status";
 import { downloadCsv, exportDateStamp } from "@/lib/download";
 import { parseAmount } from "@/lib/money";
 import { useServerTable } from "@/hooks/use-server-table";
@@ -265,12 +266,7 @@ export function TransactionsList() {
           {
             id: "status",
             label: "All statuses",
-            options: [
-              { value: "SUCCESS", label: "Confirmed from SMS" },
-              { value: "PENDING", label: "Awaiting verification" },
-              { value: "REVIEW", label: "Needs review" },
-              { value: "FAILED", label: "Verification failed" },
-            ],
+            options: STATUS_FILTER_OPTIONS,
           },
           {
             id: "provider",

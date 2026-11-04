@@ -5,10 +5,10 @@ import { statusDisplay, type PaymentStatus } from "@/lib/payment-status";
 /**
  * The status badge for the eight product statuses.
  *
- * The wording comes from `@/lib/payment-status`, which is the single place that
- * knows how the product statuses map onto the four the backend stores. The
- * most important rule it enforces: `CONFIRMED` reads "Confirmed from SMS",
- * never "Verified" — a parser match is not proof of payment.
+ * The wording comes from `@/lib/payment-status`, the single place that decides
+ * each status's label and tone. The most important rule it enforces:
+ * `CONFIRMED` reads "Confirmed from SMS", never "Verified" — a parser match
+ * is not proof of payment.
  */
 export function PaymentStatusBadge({
   status,

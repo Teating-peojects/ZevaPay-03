@@ -1,9 +1,10 @@
 /**
  * Payment status vocabulary.
  *
- * The product spec defines eight statuses. The backend currently models
- * four. This module is the single place that reconciles the two, so no
- * screen ever has to guess which label to show.
+ * The backend stores the same eight statuses the product uses (`CREATED`,
+ * `PENDING`, `REVIEW`, `CONFIRMED`, `FAILED`, `EXPIRED`, `CANCELLED`,
+ * `REFUNDED`), so there is no translation layer. This module is the single
+ * place that decides which label and tone each status gets.
  *
  * The most important rule lives here: a parser match is not proof of
  * payment. `CONFIRMED` means "we received a notification that looked like
@@ -21,29 +22,6 @@ export type PaymentStatus =
   | "EXPIRED"
   | "CANCELLED"
   | "REFUNDED";
-
-/** The four statuses the backend can currently store. */
-export type BackendStatus = "SUCCESS" | "PENDING" | "REVIEW" | "FAILED";
-
-/** Product status → backend status, for records read from the API. */
-export const SPEC_TO_BACKEND: Record<PaymentStatus, BackendStatus | null> = {
-  CREATED: null,
-  PENDING: "PENDING",
-  REVIEW: "REVIEW",
-  CONFIRMED: "SUCCESS",
-  FAILED: "FAILED",
-  EXPIRED: null,
-  CANCELLED: null,
-  REFUNDED: null,
-};
-
-/** Backend status → product status, for records read from the API. */
-export const BACKEND_TO_SPEC: Record<BackendStatus, PaymentStatus> = {
-  SUCCESS: "CONFIRMED",
-  PENDING: "PENDING",
-  REVIEW: "REVIEW",
-  FAILED: "FAILED",
-};
 
 export interface StatusDisplay {
   /** Short label shown in badges and table cells. */
@@ -126,22 +104,33 @@ export const ALL_STATUSES: PaymentStatus[] = [
   "REFUNDED",
 ];
 
-/** Converts a backend status into the product status. */
-export function toSpecStatus(status: BackendStatus): PaymentStatus {
-  return BACKEND_TO_SPEC[status];
-}
+/**
+ * Shown for a status this build does not know about, e.g. one a newer API
+ * added. A record must never fail to render because of an unfamiliar value.
+ */
+const UNKNOWN_STATUS: StatusDisplay = {
+  label: "Unknown status",
+  description: "The API returned a status this version of the app does not recognise.",
+  tone: "neutral",
+  actionable: false,
+};
 
-/** Converts a product status into the backend status, or null if unsupported. */
-export function toBackendStatus(status: PaymentStatus): BackendStatus | null {
-  return SPEC_TO_BACKEND[status];
-}
-
-/** Display metadata for a product status. */
+/** Display metadata for a status. Falls back safely for unknown values. */
 export function statusDisplay(status: PaymentStatus): StatusDisplay {
-  return STATUS_DISPLAY[status];
+  return STATUS_DISPLAY[status] ?? UNKNOWN_STATUS;
 }
 
-/** Short label for a product status. */
+/** Short label for a status. */
 export function statusLabel(status: PaymentStatus): string {
-  return STATUS_DISPLAY[status].label;
+  return statusDisplay(status).label;
 }
+
+/**
+ * Options for a status filter. The values are exactly what the API accepts
+ * in its `status` query parameter.
+ */
+export const STATUS_FILTER_OPTIONS: { value: PaymentStatus; label: string }[] =
+  ALL_STATUSES.map((status) => ({
+    value: status,
+    label: STATUS_DISPLAY[status].label,
+  }));

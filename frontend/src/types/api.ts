@@ -16,8 +16,11 @@ export type MerchantStatus = "PENDING_REVIEW" | "ACTIVE" | "SUSPENDED";
 /** Connection state of an Android SMS Bridge device. */
 export type DeviceStatus = "PENDING" | "ONLINE" | "OFFLINE";
 
-/** Processing state of a recorded payment notification. */
-export type TransactionStatus = "SUCCESS" | "PENDING" | "REVIEW" | "FAILED";
+/**
+ * Processing state of a recorded payment notification. The API returns the
+ * same eight values for transactions and payments.
+ */
+export type TransactionStatus = import("@/lib/payment-status").PaymentStatus;
 
 /** Type of a connected mobile financial services account. */
 export type AccountType = "PERSONAL" | "MERCHANT" | "AGENT" | "BUSINESS";

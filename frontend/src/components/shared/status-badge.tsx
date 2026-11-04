@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/tooltip";
-import { statusDisplay, toSpecStatus } from "@/lib/payment-status";
+import { statusDisplay } from "@/lib/payment-status";
 import type {
   AccountStatus,
   DeviceStatus,
@@ -27,7 +27,7 @@ export function TransactionStatusBadge({
 }: {
   status: TransactionStatus;
 }) {
-  const display = statusDisplay(toSpecStatus(status));
+  const display = statusDisplay(status);
 
   return (
     <Tooltip content={display.description}>

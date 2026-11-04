@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { formatBDT, formatDateTimeShort } from "@/lib/format";
+import { STATUS_FILTER_OPTIONS } from "@/lib/payment-status";
 import { useServerTable } from "@/hooks/use-server-table";
 import type { ApiPayment } from "@/types/api";
 import { NewPaymentModal } from "./new-payment-modal";
@@ -121,16 +122,7 @@ export default function PaymentsPage() {
           {
             id: "status",
             label: "All statuses",
-            options: [
-              { value: "CREATED", label: "Created" },
-              { value: "PENDING", label: "Awaiting verification" },
-              { value: "REVIEW", label: "Needs review" },
-              { value: "CONFIRMED", label: "Confirmed" },
-              { value: "FAILED", label: "Verification failed" },
-              { value: "EXPIRED", label: "Expired" },
-              { value: "CANCELLED", label: "Cancelled" },
-              { value: "REFUNDED", label: "Refunded" },
-            ],
+            options: STATUS_FILTER_OPTIONS,
           },
         ]}
         emptyTitle="No payments yet"
