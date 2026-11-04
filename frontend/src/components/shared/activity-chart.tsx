@@ -12,11 +12,19 @@ import {
 } from "recharts";
 import type { ActivityPoint } from "@/types/api";
 
+/*
+ * Colours come from the design-system CSS variables, not hex literals, so the
+ * chart follows the light/dark theme like every other surface. Series fills
+ * use the status `-fg` tokens, which are re-tuned per theme for contrast.
+ */
 const SERIES = [
-  { key: "success", label: "Confirmed from SMS", color: "#10b981" },
-  { key: "pending", label: "Awaiting verification", color: "#f59e0b" },
-  { key: "failed", label: "Verification failed", color: "#ef4444" },
+  { key: "success", label: "Confirmed from SMS", color: "var(--zp-success-fg)" },
+  { key: "pending", label: "Awaiting verification", color: "var(--zp-warning-fg)" },
+  { key: "failed", label: "Verification failed", color: "var(--zp-danger-fg)" },
 ] as const;
+
+const GRID = "var(--zp-line)";
+const TICK = { fill: "var(--zp-fg-muted)", fontSize: 12 };
 
 /**
  * Stacked activity chart for the overview pages. Values are counts of
@@ -30,34 +38,37 @@ export function ActivityChart({
   className?: string;
 }) {
   return (
-    <div className={className}>
+    <div
+      className={className}
+      role="img"
+      aria-label="Bar chart of transactions per day, split into confirmed from SMS, awaiting verification and verification failed."
+    >
       <ResponsiveContainer width="100%" height={280}>
         <BarChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="#e2e8f0"
-            vertical={false}
-          />
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
           <XAxis
             dataKey="label"
-            tick={{ fill: "#64748b", fontSize: 12 }}
-            axisLine={{ stroke: "#e2e8f0" }}
+            tick={TICK}
+            axisLine={{ stroke: GRID }}
             tickLine={false}
           />
           <YAxis
-            tick={{ fill: "#64748b", fontSize: 12 }}
+            tick={TICK}
             axisLine={false}
             tickLine={false}
             allowDecimals={false}
           />
           <Tooltip
-            cursor={{ fill: "#f1f5f9" }}
+            cursor={{ fill: "var(--zp-elevated)" }}
             contentStyle={{
               borderRadius: 8,
-              border: "1px solid #e2e8f0",
-              boxShadow: "0 4px 6px -1px rgb(15 23 42 / 0.07)",
+              border: "1px solid var(--zp-line)",
+              background: "var(--zp-surface)",
+              color: "var(--zp-fg)",
+              boxShadow: "var(--shadow-overlay)",
               fontSize: 13,
             }}
+            labelStyle={{ color: "var(--zp-fg-secondary)", fontWeight: 600 }}
           />
           <Legend
             verticalAlign="top"
@@ -65,7 +76,7 @@ export function ActivityChart({
             height={32}
             iconType="circle"
             iconSize={8}
-            wrapperStyle={{ fontSize: 12, color: "#475569" }}
+            wrapperStyle={{ fontSize: 12, color: "var(--zp-fg-secondary)" }}
           />
           {SERIES.map((series) => (
             <Bar

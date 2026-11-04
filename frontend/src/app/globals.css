@@ -434,8 +434,20 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
   .public-page-enter,
   .public-menu-enter {
     animation: none;
+  }
+
+  /* Keep spinners readable, but stop decorative movement. */
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
