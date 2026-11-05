@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/form";
 import { useToast } from "@/components/ui/toast";
+import { Alert } from "@/components/ui/alert";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { formatNumber } from "@/lib/format";
 import {
@@ -29,6 +30,7 @@ export default function AdminSettingsPage() {
   const [user, setUser] = React.useState<ApiUser | null>(null);
   const [system, setSystem] = React.useState<AdminSystemInfo | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [loadFailed, setLoadFailed] = React.useState(false);
 
   const {
     register,
@@ -66,6 +68,7 @@ export default function AdminSettingsPage() {
         await load();
       } catch {
         if (cancelled) return;
+        setLoadFailed(true);
         toast({
           title: "Could not load the settings",
           description: "Please refresh the page and try again.",
@@ -226,6 +229,21 @@ export default function AdminSettingsPage() {
                 </dd>
               </div>
             </dl>
+          ) : loadFailed ? (
+            <Alert tone="danger" title="System information is unavailable">
+              The API did not return the settings.{" "}
+              <button
+                type="button"
+                className="font-medium underline"
+                onClick={() => {
+                  setLoadFailed(false);
+                  setLoading(true);
+                  setReloadToken((token) => token + 1);
+                }}
+              >
+                Try again
+              </button>
+            </Alert>
           ) : (
             <p className="text-[13px] text-ink-muted">
               Loading system information…

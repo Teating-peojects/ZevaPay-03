@@ -13,7 +13,9 @@ import { StatCard } from "@/components/dashboard/stat-card";
 import { ActivityChart } from "@/components/shared/activity-chart";
 import { ProviderBadge } from "@/components/shared/provider-badge";
 import { TransactionStatusBadge } from "@/components/shared/status-badge";
-import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
+import { Alert } from "@/components/ui/alert";
+import { ButtonLink } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -47,13 +49,14 @@ export default async function AdminOverviewPage() {
 
   if (!session || !overview) {
     return (
-      <div className="surface rounded-xl p-8 text-center">
-        <p className="text-[15px] font-semibold text-ink">
-          We couldn&apos;t load the platform overview
-        </p>
-        <p className="mt-1.5 text-sm text-ink-muted">
-          The API did not return any data. Try refreshing the page.
-        </p>
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          title="Platform overview"
+          description="Activity across all merchants registered on ZevaPay."
+        />
+        <Alert tone="danger" title="The platform overview is unavailable">
+          The API did not return any data. Refresh the page to try again.
+        </Alert>
       </div>
     );
   }
@@ -62,16 +65,46 @@ export default async function AdminOverviewPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">
-            Platform overview
-          </h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            Activity across all merchants registered on ZevaPay.
-          </p>
+      <PageHeader
+        title="Platform overview"
+        description="Activity across all merchants registered on ZevaPay."
+      />
+
+      {/* What needs an admin's attention, each one click from its queue. */}
+      {overview.stats.pendingReviews > 0 || merchantCounts.pendingReview > 0 ? (
+        <div className="flex flex-col gap-3">
+          {merchantCounts.pendingReview > 0 ? (
+            <Alert
+              tone="warning"
+              title={`${merchantCounts.pendingReview} ${
+                merchantCounts.pendingReview === 1 ? "merchant is" : "merchants are"
+              } waiting for approval`}
+            >
+              They cannot use ZevaPay until approved.{" "}
+              <Link
+                href="/admin/merchants?status=PENDING_REVIEW"
+                className="font-medium underline"
+              >
+                Review merchants
+              </Link>
+            </Alert>
+          ) : null}
+          {overview.stats.pendingReviews > 0 ? (
+            <Alert
+              tone="warning"
+              title={`${overview.stats.pendingReviews} ${
+                overview.stats.pendingReviews === 1 ? "payment needs" : "payments need"
+              } review`}
+            >
+              The parser was not confident enough to accept{" "}
+              {overview.stats.pendingReviews === 1 ? "it" : "them"}.{" "}
+              <Link href="/admin/reviews" className="font-medium underline">
+                Open the review queue
+              </Link>
+            </Alert>
+          ) : null}
         </div>
-      </div>
+      ) : null}
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -91,7 +124,7 @@ export default async function AdminOverviewPage() {
         <StatCard
           label="Total transactions"
           value={formatNumber(overview.stats.totalTransactions)}
-          hint={`${formatBDT(overview.stats.totalAmount)} recorded`}
+          hint={`${formatBDT(overview.stats.totalAmount)} recorded, all statuses`}
           icon={Receipt}
         />
         <StatCard
@@ -125,7 +158,7 @@ export default async function AdminOverviewPage() {
                 <CardDescription>
                   {deviceCounts.online} of{" "}
                   {deviceCounts.online + deviceCounts.offline + deviceCounts.pending}{" "}
-                  online
+                  marked online
                 </CardDescription>
               </div>
               <span className="flex size-9 items-center justify-center rounded-lg bg-elevated">
@@ -163,6 +196,11 @@ export default async function AdminOverviewPage() {
                   </span>
                 </div>
               ))}
+              <p className="text-[12px] leading-relaxed text-ink-muted">
+                Based on each device&apos;s last reported status. A phone that
+                stopped syncing can still count as online here; open Devices
+                to see last sync times.
+              </p>
               <Link
                 href="/admin/devices"
                 className="mt-1 inline-flex items-center gap-1 text-[13px] font-medium text-brand-link transition-colors hover:text-brand-link-hover"
@@ -221,12 +259,10 @@ export default async function AdminOverviewPage() {
               Latest recorded notifications across all merchants
             </CardDescription>
           </div>
-          <Link href="/admin/transactions">
-            <Button variant="outline" size="sm">
-              View all
-              <ArrowRight className="size-3.5" aria-hidden="true" />
-            </Button>
-          </Link>
+          <ButtonLink href="/admin/transactions" variant="outline" size="sm">
+            View all
+            <ArrowRight className="size-3.5" aria-hidden="true" />
+          </ButtonLink>
         </CardHeader>
         <CardContent className="px-0 py-0">
           <Table>
@@ -257,7 +293,7 @@ export default async function AdminOverviewPage() {
                       size="sm"
                     />
                   </TableCell>
-                  <TableCell className="text-right font-medium text-ink">
+                  <TableCell className="text-right font-medium text-ink tabular-nums">
                     {formatBDT(transaction.amount)}
                   </TableCell>
                   <TableCell>

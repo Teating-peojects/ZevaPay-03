@@ -1,4 +1,5 @@
 import * as React from "react";
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,37 @@ const sizeStyles: Record<ButtonSize, string> = {
   icon: "h-10 w-10 justify-center [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11",
 };
 
+const baseStyles =
+  "inline-flex shrink-0 items-center justify-center rounded-lg font-medium whitespace-nowrap transition-colors";
+
+export interface ButtonLinkProps
+  extends Omit<React.ComponentProps<typeof Link>, "className"> {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  className?: string;
+}
+
+/**
+ * A link that looks like a button.
+ *
+ * Use this instead of wrapping a `<Button>` in a `<Link>`: a button inside an
+ * anchor is invalid HTML, gives keyboard users two tab stops for one action,
+ * and confuses screen readers about whether it is a link or a button.
+ */
+export function ButtonLink({
+  variant = "primary",
+  size = "md",
+  className,
+  ...props
+}: ButtonLinkProps) {
+  return (
+    <Link
+      className={cn(baseStyles, variantStyles[variant], sizeStyles[size], className)}
+      {...props}
+    />
+  );
+}
+
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -55,7 +87,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         aria-busy={loading || undefined}
         className={cn(
-          "inline-flex shrink-0 items-center justify-center rounded-lg font-medium whitespace-nowrap transition-colors",
+          baseStyles,
           "disabled:cursor-not-allowed disabled:opacity-55",
           variantStyles[variant],
           sizeStyles[size],

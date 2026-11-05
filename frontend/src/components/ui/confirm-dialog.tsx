@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { TriangleAlert } from "lucide-react";
+import { CircleCheck, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 
@@ -17,7 +17,11 @@ export interface ConfirmDialogProps {
   onCancel: () => void;
 }
 
-/** Confirmation dialog for destructive actions. */
+/**
+ * Confirmation dialog. `danger` (the default) is for destructive actions and
+ * shows a warning icon; `primary` is for a consequential but constructive
+ * action, such as approving a merchant, and must not look like a warning.
+ */
 export function ConfirmDialog({
   open,
   title,
@@ -51,9 +55,15 @@ export function ConfirmDialog({
       }
     >
       <div className="flex gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-danger-tint">
-          <TriangleAlert className="size-4 text-danger-fg" aria-hidden="true" />
-        </span>
+        {tone === "danger" ? (
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-danger-tint">
+            <TriangleAlert className="size-4 text-danger-fg" aria-hidden="true" />
+          </span>
+        ) : (
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-tint">
+            <CircleCheck className="size-4 text-brand-link" aria-hidden="true" />
+          </span>
+        )}
         <p className="text-sm leading-relaxed text-ink-soft">{description}</p>
       </div>
     </Modal>

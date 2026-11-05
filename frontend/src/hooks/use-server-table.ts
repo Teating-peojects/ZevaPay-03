@@ -20,6 +20,8 @@ export interface ServerTableOptions {
   pageSize?: number;
   /** Initial search term, e.g. from a `?q=` query parameter. */
   initialQuery?: string;
+  /** Initial filter values, e.g. from a `?status=` query parameter. */
+  initialFilters?: Record<string, string>;
   /** Maps the table state to API query parameters. */
   buildQuery?: (
     state: ServerTableState,
@@ -57,11 +59,14 @@ export function useServerTable<T>({
   path,
   pageSize = 10,
   initialQuery = "",
+  initialFilters,
   buildQuery,
   extraQuery,
 }: ServerTableOptions): ServerTableResult<T> {
   const [query, setQueryState] = React.useState(initialQuery);
-  const [filters, setFilters] = React.useState<Record<string, string>>({});
+  const [filters, setFilters] = React.useState<Record<string, string>>(
+    initialFilters ?? {},
+  );
   const [dateRange, setDateRangeState] = React.useState<DateRange>("all");
   const [page, setPage] = React.useState(1);
 
