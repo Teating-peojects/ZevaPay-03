@@ -3,19 +3,23 @@
 import * as React from "react";
 import { Eye, MonitorSmartphone, Unplug } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
-import { DeviceStatusBadge } from "@/components/shared/status-badge";
+import { DeviceHealthBadge } from "@/components/shared/device-health-badge";
 import { DataTable, type Column } from "@/components/shared/data-table";
+import { Alert } from "@/components/ui/alert";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
+import { deviceHealth } from "@/lib/device-health";
 import { formatRelativeTime } from "@/lib/format";
 import { apiFetch } from "@/lib/api-client";
 import { useServerTable } from "@/hooks/use-server-table";
 import { useLiveEvents } from "@/hooks/use-live-events";
+import { useNow } from "@/hooks/use-now";
 import type { ApiDevice } from "@/types/api";
 import { DeviceDetailsModal } from "./device-details-modal";
 
 export default function AdminDevicesPage() {
   const { toast } = useToast();
+  const now = useNow();
   const [selected, setSelected] = React.useState<ApiDevice | null>(null);
   const [pendingDisconnect, setPendingDisconnect] = React.useState<ApiDevice | null>(
     null,
@@ -68,6 +72,10 @@ export default function AdminDevicesPage() {
     }
   }
 
+  const notReporting = table.rows.filter(
+    (device) => deviceHealth(device, now).needsAttention,
+  );
+
   const columns: Column<ApiDevice>[] = [
     {
       key: "name",
@@ -96,15 +104,15 @@ export default function AdminDevicesPage() {
     },
     {
       key: "status",
-      header: "Connection status",
-      render: (device) => <DeviceStatusBadge status={device.status} />,
+      header: "Connection",
+      render: (device) => <DeviceHealthBadge device={device} now={now} />,
     },
     {
       key: "lastActive",
-      header: "Last active",
+      header: "Last sync",
       render: (device) => (
         <span className="text-[13px] text-ink-muted">
-          {formatRelativeTime(device.lastActiveAt, Date.now())}
+          {formatRelativeTime(device.lastActiveAt, now)}
         </span>
       ),
     },
@@ -116,6 +124,20 @@ export default function AdminDevicesPage() {
         title="Devices"
         description="Android SMS Bridge devices connected by merchants on the platform."
       />
+
+      {notReporting.length > 0 ? (
+        <Alert
+          tone="warning"
+          title={
+            notReporting.length === 1
+              ? "1 device on this page is not reporting"
+              : `${notReporting.length} devices on this page are not reporting`
+          }
+        >
+          Their merchants may not be recording payment notifications until the
+          phones reconnect. Open a device to see its last sync.
+        </Alert>
+      ) : null}
 
       <DataTable
         columns={columns}
@@ -166,15 +188,15 @@ export default function AdminDevicesPage() {
 
       <DeviceDetailsModal
         device={selected}
+        now={now}
         merchantName={selected?.merchantName ?? undefined}
-        accountLabel={selected?.connectedAccountLabel ?? undefined}
         onClose={() => setSelected(null)}
       />
 
       <ConfirmDialog
         open={pendingDisconnect !== null}
         title="Disconnect device?"
-        description={`This will remove "${pendingDisconnect?.name}" from the platform. The physical device is not affected and the merchant can pair it again.`}
+        description={`This removes "${pendingDisconnect?.name}" from the platform. It will not be able to post notifications until the merchant pairs it again with a new code. Transactions it already reported are kept.`}
         confirmLabel="Disconnect device"
         loading={disconnecting}
         onConfirm={handleDisconnect}

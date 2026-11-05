@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Copy, RefreshCw } from "lucide-react";
+import { Check, CircleCheck, Copy, RefreshCw } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -9,6 +9,7 @@ import { Alert } from "@/components/ui/alert";
 import { Label, Select } from "@/components/ui/form";
 import { useToast } from "@/components/ui/toast";
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
+import { useNow } from "@/hooks/use-now";
 import { apiFetch } from "@/lib/api-client";
 import { PROVIDER_LIST } from "@/data/providers";
 import type { ApiPairingCode, ApiPaymentAccount } from "@/types/api";
@@ -16,22 +17,27 @@ import type { ApiPairingCode, ApiPaymentAccount } from "@/types/api";
 /**
  * Connect-device modal. Issues a real, single-use pairing code that the
  * Android SMS Bridge app exchanges for a device record. The code expires
- * after fifteen minutes.
+ * after fifteen minutes, and the modal counts down and says so when it does.
  */
 export function ConnectDeviceModal({
   open,
   onClose,
   onPaired,
   accounts,
+  paired,
 }: {
   open: boolean;
   onClose: () => void;
   onPaired: () => void;
+  /** True once a device has paired while this dialog was open. */
+  paired: boolean;
   /** Payment accounts the device can be linked to. */
   accounts: ApiPaymentAccount[];
 }) {
   const { toast } = useToast();
   const { copied, copy } = useCopyToClipboard();
+  // Ticks every second while open so the countdown is live.
+  const now = useNow(open ? 1000 : 60_000);
   const [pairing, setPairing] = React.useState<ApiPairingCode | null>(null);
   const [accountId, setAccountId] = React.useState("");
   const [loading, setLoading] = React.useState(false);
@@ -85,10 +91,15 @@ export function ConnectDeviceModal({
   }
 
   const expiresAt = pairing ? new Date(pairing.expiresAt) : null;
+  const remainingMs = expiresAt ? expiresAt.getTime() - now : 0;
+  const expired = expiresAt !== null && remainingMs <= 0;
+  const countdown = `${Math.floor(remainingMs / 60000)}:${String(
+    Math.floor((remainingMs % 60000) / 1000),
+  ).padStart(2, "0")}`;
 
   // What the QR code encodes. It is the same code, so scanning it is the
   // same act as typing it in.
-  const pairingPayload = pairing
+  const pairingPayload = pairing && !expired
     ? `zevapay://pair?code=${encodeURIComponent(pairing.code)}`
     : "";
 
@@ -100,10 +111,7 @@ export function ConnectDeviceModal({
       description="Pair an Android SMS Bridge device with this merchant."
       size="md"
       footer={
-        <>
-          <Button variant="outline" onClick={onClose} type="button">
-            Close
-          </Button>
+        paired ? (
           <Button
             type="button"
             onClick={() => {
@@ -113,9 +121,36 @@ export function ConnectDeviceModal({
           >
             Done
           </Button>
-        </>
+        ) : (
+          <>
+            <Button variant="outline" onClick={onClose} type="button">
+              Close
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                onPaired();
+                onClose();
+              }}
+            >
+              Done
+            </Button>
+          </>
+        )
       }
     >
+      {paired ? (
+        <div className="flex flex-col items-center gap-3 py-6 text-center">
+          <span className="flex size-12 items-center justify-center rounded-full bg-success-tint">
+            <CircleCheck className="size-6 text-success-fg" aria-hidden="true" />
+          </span>
+          <p className="text-base font-semibold text-ink">Device connected</p>
+          <p className="max-w-xs text-[13px] leading-relaxed text-ink-muted">
+            The device paired successfully and is now in your device list. The
+            pairing code has been used and cannot be reused.
+          </p>
+        </div>
+      ) : (
       <div className="flex flex-col gap-5">
         <Alert tone="info">
           The pairing code is single-use and expires after 15 minutes. The
@@ -123,9 +158,7 @@ export function ConnectDeviceModal({
         </Alert>
 
         <div>
-          <Label htmlFor="pairing-account" required>
-            Payment account
-          </Label>
+          <Label htmlFor="pairing-account">Payment account (optional)</Label>
           <Select
             id="pairing-account"
             value={accountId}
@@ -134,7 +167,7 @@ export function ConnectDeviceModal({
               setPairing(null);
               setRequestToken((token) => token + 1);
             }}
-            hint="Notifications from the device are attributed to this account."
+            hint="Notifications from the device are attributed to this account. You can change it later."
           >
             <option value="">Any account</option>
             {accounts.map((account) => (
@@ -157,7 +190,12 @@ export function ConnectDeviceModal({
             </Alert>
           ) : null}
           <div className="flex items-center gap-3 rounded-lg border border-line bg-elevated px-4 py-4">
-            <code className="flex-1 font-mono text-lg font-semibold tracking-widest text-ink">
+            <code
+              className={
+                "flex-1 font-mono text-lg font-semibold tracking-widest " +
+                (expired ? "text-ink-faint line-through" : "text-ink")
+              }
+            >
               {loading && !pairing ? "·······" : (pairing?.code ?? "—")}
             </code>
             <Button
@@ -165,7 +203,7 @@ export function ConnectDeviceModal({
               variant="outline"
               size="sm"
               onClick={handleCopy}
-              disabled={!pairing}
+              disabled={!pairing || expired}
               className="shrink-0"
             >
               {copied ? (
@@ -177,13 +215,20 @@ export function ConnectDeviceModal({
             </Button>
           </div>
           <div className="mt-2 flex items-center justify-between gap-3">
-            <p className="text-[12px] text-ink-muted">
-              {expiresAt
-                ? `Expires at ${expiresAt.toLocaleTimeString("en-US", {
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}`
-                : ""}
+            <p
+              className={
+                "text-[12px] " + (expired ? "font-medium text-warning-fg" : "text-ink-muted")
+              }
+              aria-live="polite"
+            >
+              {!expiresAt
+                ? ""
+                : expired
+                  ? "This code has expired. Generate a new one."
+                  : `Expires in ${countdown} · ${expiresAt.toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}`}
             </p>
             <Button
               type="button"
@@ -216,8 +261,8 @@ export function ConnectDeviceModal({
                   title="ZevaPay device pairing code"
                 />
               ) : (
-                <div className="flex size-[140px] items-center justify-center text-[12px] text-ink-faint">
-                  Waiting for a code
+                <div className="flex size-[140px] items-center justify-center text-center text-[12px] text-ink-faint">
+                  {expired ? "Code expired" : "Waiting for a code"}
                 </div>
               )}
             </div>
@@ -252,6 +297,7 @@ export function ConnectDeviceModal({
           ))}
         </ol>
       </div>
+      )}
     </Modal>
   );
 }
