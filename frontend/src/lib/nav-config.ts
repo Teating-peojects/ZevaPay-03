@@ -39,6 +39,7 @@ export const merchantNav: NavSection[] = [
       { label: "Team", href: "/dashboard/team", icon: "team" },
       { label: "Settings", href: "/dashboard/settings", icon: "settings" },
       { label: "Security", href: "/dashboard/security", icon: "security" },
+      { label: "Audit Logs", href: "/dashboard/audit-logs", icon: "auditLogs" },
       { label: "Help & Support", href: "/dashboard/support", icon: "support" },
     ],
   },

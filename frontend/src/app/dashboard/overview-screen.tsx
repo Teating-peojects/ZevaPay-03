@@ -86,7 +86,7 @@ export function MerchantOverviewScreen({
         <StatCard
           label="Recorded amount"
           value={formatBDT(stats.totalAmount)}
-          hint="Across all recorded notifications"
+          hint="All recorded notifications, including pending, review and failed. Not revenue."
           icon={Wallet}
         />
         <StatCard
