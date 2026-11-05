@@ -253,6 +253,23 @@ export interface ApiPayment {
   customerId: string | null;
 }
 
+/** One attempt to collect a payment through a provider. */
+export interface ApiPaymentAttempt {
+  id: string;
+  provider: PaymentProvider;
+  status: import("@/lib/payment-status").PaymentStatus;
+  amountMinor: number;
+  currency: string;
+  providerReference: string | null;
+  createdAt: string;
+}
+
+/** `GET /merchant/payments/:id`: the payment plus its customer and attempts. */
+export interface ApiPaymentDetail extends ApiPayment {
+  customer: Pick<ApiCustomer, "id" | "name" | "email" | "phone"> | null;
+  attempts: ApiPaymentAttempt[];
+}
+
 export interface ApiCustomer {
   id: string;
   name: string | null;

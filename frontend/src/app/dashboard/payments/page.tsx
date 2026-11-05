@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/toast";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { formatBDT, formatDateTimeShort } from "@/lib/format";
 import { STATUS_FILTER_OPTIONS } from "@/lib/payment-status";
+import { dateRangeBounds, type DateRange } from "@/lib/date-range";
 import { useServerTable } from "@/hooks/use-server-table";
 import type { ApiPayment } from "@/types/api";
 import { NewPaymentModal } from "./new-payment-modal";
@@ -25,11 +26,30 @@ export default function PaymentsPage() {
   const [cancelling, setCancelling] = React.useState<ApiPayment | null>(null);
   const [busy, setBusy] = React.useState(false);
 
+  // The API filters payments by status only. Search and the date range are
+  // applied to the page of rows the table holds, and the hint says so.
+  const [query, setQuery] = React.useState("");
+  const [dateRange, setDateRange] = React.useState<DateRange>("all");
+
   const table = useServerTable<ApiPayment>({
     path: "/api/v1/merchant/payments",
     pageSize: 10,
     buildQuery: (state) => ({ status: state.filters.status }),
   });
+
+  const visibleRows = React.useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const { from } = dateRangeBounds(dateRange);
+    return table.rows.filter((payment) => {
+      if (from && payment.createdAt < from) return false;
+      if (!needle) return true;
+      return (
+        payment.reference.toLowerCase().includes(needle) ||
+        (payment.description ?? "").toLowerCase().includes(needle)
+      );
+    });
+    // `Date.now()` inside dateRangeBounds is read when the filter changes.
+  }, [table.rows, query, dateRange]);
 
   async function confirmCancel() {
     if (!cancelling) return;
@@ -115,9 +135,12 @@ export default function PaymentsPage() {
 
       <DataTable
         columns={columns}
-        rows={table.rows}
+        rows={visibleRows}
         loading={table.loading}
         error={table.error ?? undefined}
+        showSearch
+        searchPlaceholder="Search by reference or description"
+        showDateFilter
         filters={[
           {
             id: "status",
@@ -148,9 +171,13 @@ export default function PaymentsPage() {
           page: table.page,
           pageSize: table.pageSize,
           filters: table.filters,
+          query,
+          dateRange,
           onPageChange: table.setPage,
-          onQueryChange: table.setQuery,
+          onQueryChange: setQuery,
           onFilterChange: table.setFilter,
+          onDateRangeChange: setDateRange,
+          hint: "Search and date range apply to the payments on this page. The API filters by status only.",
         }}
       />
 
