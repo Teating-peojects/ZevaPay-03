@@ -1,11 +1,10 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CircleCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Input, Label } from "@/components/ui/form";
 import {
@@ -89,9 +88,7 @@ export function ForgotPasswordForm() {
           >
             Use a different email
           </Button>
-          <Link href="/login" className="flex-1">
-            <Button className="w-full">Back to login</Button>
-          </Link>
+          <ButtonLink href="/login" className="flex-1 w-full">Back to login</ButtonLink>
         </div>
       </div>
     );

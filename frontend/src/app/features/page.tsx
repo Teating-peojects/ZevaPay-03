@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import {
   Bell,
   Code2,
@@ -17,7 +16,7 @@ import {
 } from "lucide-react";
 import { PublicLayout } from "@/components/marketing/public-layout";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   title: "Features",
@@ -141,11 +140,9 @@ export default function FeaturesPage() {
             OTP, and never moves your money.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href="/register">
-              <Button size="lg" className="w-full sm:w-auto">
+            <ButtonLink href="/register" size="lg" className="w-full sm:w-auto">
                 Create an account
-              </Button>
-            </Link>
+              </ButtonLink>
           </div>
         </div>
       </section>
@@ -249,14 +246,9 @@ export default function FeaturesPage() {
               whole flow before you decide anything.
             </p>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-              <Link href="/register">
-                <Button
-                  size="lg"
-                  className="w-full bg-white text-brand-link hover:bg-brand-tint sm:w-auto"
-                >
+              <ButtonLink href="/register" size="lg" className="w-full bg-white text-brand-link hover:bg-brand-tint sm:w-auto">
                   Get started
-                </Button>
-              </Link>
+                </ButtonLink>
             </div>
           </div>
         </div>

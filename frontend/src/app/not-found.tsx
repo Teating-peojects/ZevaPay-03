@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
@@ -23,14 +22,10 @@ export default function NotFound() {
             The page you are looking for does not exist or has been moved.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link href="/">
-              <Button variant="outline" className="w-full sm:w-auto">
+            <ButtonLink href="/" variant="outline" className="w-full sm:w-auto">
                 Back to home
-              </Button>
-            </Link>
-            <Link href="/dashboard">
-              <Button className="w-full sm:w-auto">Go to dashboard</Button>
-            </Link>
+              </ButtonLink>
+            <ButtonLink href="/dashboard" className="w-full sm:w-auto">Go to dashboard</ButtonLink>
           </div>
         </div>
       </main>

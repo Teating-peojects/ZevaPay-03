@@ -16,7 +16,7 @@ import {
 import { SiteHeader } from "@/components/marketing/site-header";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { Faq } from "@/components/marketing/faq";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PROVIDER_LIST } from "@/data/providers";
 import { ProviderLogo } from "@/components/shared/provider-logo";
@@ -169,21 +169,13 @@ export default function HomePage() {
               </p>
 
               <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                <Link href="/register">
-                  <Button size="lg" className="w-full sm:w-auto">
+                <ButtonLink href="/register" size="lg" className="w-full sm:w-auto">
                     Get started
                     <ArrowRight className="size-4" aria-hidden="true" />
-                  </Button>
-                </Link>
-                <Link href="/login">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="w-full sm:w-auto"
-                  >
+                  </ButtonLink>
+                <ButtonLink href="/login" size="lg" variant="outline" className="w-full sm:w-auto">
                     Sign in
-                  </Button>
-                </Link>
+                  </ButtonLink>
               </div>
 
               <p className="mt-6 text-sm text-ink-muted">
@@ -447,23 +439,12 @@ export default function HomePage() {
                 Android device, and see every notification in one place.
               </p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                <Link href="/register">
-                  <Button
-                    size="lg"
-                    className="w-full bg-surface text-brand-link hover:bg-brand-tint sm:w-auto"
-                  >
+                <ButtonLink href="/register" size="lg" className="w-full bg-surface text-brand-link hover:bg-brand-tint sm:w-auto">
                     Get started
-                  </Button>
-                </Link>
-                <Link href="/login">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="w-full border-white/40 bg-transparent text-white hover:bg-white/10 sm:w-auto"
-                  >
+                  </ButtonLink>
+                <ButtonLink href="/login" size="lg" variant="outline" className="w-full border-white/40 bg-transparent text-white hover:bg-white/10 sm:w-auto">
                     Login
-                  </Button>
-                </Link>
+                  </ButtonLink>
               </div>
             </div>
           </div>

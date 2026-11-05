@@ -1,11 +1,10 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CircleCheck } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
 type State = "idle" | "verifying" | "verified" | "failed";
@@ -46,9 +45,7 @@ export function VerifyEmailForm() {
           </span>
           <p className="mt-4 text-[15px] font-semibold text-ink">Email verified</p>
         </div>
-        <Link href="/dashboard" className="w-full">
-          <Button className="w-full">Continue to the dashboard</Button>
-        </Link>
+        <ButtonLink href="/dashboard" className="w-full w-full">Continue to the dashboard</ButtonLink>
       </div>
     );
   }

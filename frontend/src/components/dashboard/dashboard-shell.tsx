@@ -42,6 +42,16 @@ export function DashboardShell({
     return () => media.removeEventListener("change", onChange);
   }, []);
 
+  // Escape closes the drawer, as it does for every other overlay.
+  React.useEffect(() => {
+    if (!mobileNavOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileNavOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [mobileNavOpen]);
+
   // Lock body scroll while the drawer is open.
   React.useEffect(() => {
     if (!mobileNavOpen) return;
@@ -54,6 +64,13 @@ export function DashboardShell({
 
   return (
     <div className="flex min-h-full bg-canvas">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-surface focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-ink focus:shadow-lg"
+      >
+        Skip to content
+      </a>
+
       {/* Desktop sidebar */}
       <div className="sticky top-0 hidden h-screen lg:block">
         <Sidebar
@@ -66,7 +83,12 @@ export function DashboardShell({
 
       {/* Mobile drawer */}
       {mobileNavOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div
+          className="fixed inset-0 z-50 lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation menu"
+        >
           <div
             className="absolute inset-0 bg-overlay"
             onClick={() => setMobileNavOpen(false)}
@@ -92,7 +114,11 @@ export function DashboardShell({
           variant={variant}
         />
 
-        <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 px-4 py-6 focus:outline-none sm:px-6 sm:py-8"
+        >
           <div className="mx-auto max-w-7xl">{children}</div>
         </main>
       </div>

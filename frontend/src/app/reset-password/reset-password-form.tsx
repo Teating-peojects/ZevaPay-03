@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CircleCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Label } from "@/components/ui/form";
 import { ApiError, apiFetch } from "@/lib/api-client";
@@ -54,9 +54,7 @@ export function ResetPasswordForm() {
           </p>
         </div>
 
-        <Link href="/login" className="w-full">
-          <Button className="w-full">Back to login</Button>
-        </Link>
+        <ButtonLink href="/login" className="w-full w-full">Back to login</ButtonLink>
       </div>
     );
   }

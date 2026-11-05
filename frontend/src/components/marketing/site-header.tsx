@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 
 const navLinks = [
   { label: "Home", href: "/" },
@@ -75,14 +75,10 @@ export function SiteHeader() {
 
         <div className="hidden items-center gap-2 lg:flex">
           <ThemeToggle />
-          <Link href="/login">
-            <Button variant="ghost" size="md">
+          <ButtonLink href="/login" variant="ghost" size="md">
               Login
-            </Button>
-          </Link>
-          <Link href="/register">
-            <Button size="md">Get started</Button>
-          </Link>
+            </ButtonLink>
+          <ButtonLink href="/register" size="md">Get started</ButtonLink>
         </div>
 
         <button
