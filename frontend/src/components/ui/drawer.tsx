@@ -3,6 +3,7 @@
 import * as React from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isTopOverlay, pushOverlay, removeOverlay } from "@/lib/overlay-stack";
 
 export interface DrawerProps {
   open: boolean;
@@ -41,17 +42,24 @@ export function Drawer({
   const panelRef = React.useRef<HTMLDivElement>(null);
   const previouslyFocused = React.useRef<HTMLElement | null>(null);
 
+  // See Modal: a ref keeps an inline `onClose` from re-running the effect.
+  const onCloseRef = React.useRef(onClose);
+  React.useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
   React.useEffect(() => {
     if (!open) return;
 
     previouslyFocused.current = document.activeElement as HTMLElement | null;
-    const { overflow } = document.body.style;
-    document.body.style.overflow = "hidden";
+    const overlayId = pushOverlay();
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (!isTopOverlay(overlayId)) return;
+
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -86,11 +94,11 @@ export function Drawer({
 
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = overflow;
+      removeOverlay(overlayId);
       window.clearTimeout(timer);
       previouslyFocused.current?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

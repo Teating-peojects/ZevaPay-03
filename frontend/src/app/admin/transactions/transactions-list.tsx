@@ -9,8 +9,7 @@ import { TransactionStatusBadge } from "@/components/shared/status-badge";
 import { DataTable, type Column } from "@/components/shared/data-table";
 import { LiveIndicator } from "@/components/shared/live-indicator";
 import { TransactionDetailsModal } from "@/components/shared/transaction-details-modal";
-import { useToast } from "@/components/ui/toast";
-import { apiFetch } from "@/lib/api-client";
+import { useTransactionReview } from "@/components/shared/review-decision";
 import { formatBDT, formatDateTimeShort } from "@/lib/format";
 import { dateRangeBounds } from "@/lib/date-range";
 import { STATUS_FILTER_OPTIONS } from "@/lib/payment-status";
@@ -20,9 +19,7 @@ import type { ApiTransaction } from "@/types/api";
 
 export function AdminTransactionsList() {
   const searchParams = useSearchParams();
-  const { toast } = useToast();
   const [selected, setSelected] = React.useState<ApiTransaction | null>(null);
-  const [reviewing, setReviewing] = React.useState(false);
 
   const table = useServerTable<ApiTransaction>({
     path: "/api/v1/admin/transactions",
@@ -47,36 +44,14 @@ export function AdminTransactionsList() {
     }
   });
 
-  async function handleReview(
-    transaction: ApiTransaction,
-    decision: "ACCEPT" | "REJECT",
-  ) {
-    setReviewing(true);
-    try {
-      await apiFetch(`/api/v1/admin/transactions/${transaction.id}/review`, {
-        method: "POST",
-        body: { decision },
-      });
-      toast({
-        title: decision === "ACCEPT" ? "Payment accepted" : "Payment rejected",
-        description:
-          decision === "ACCEPT"
-            ? `${transaction.reference} was recorded as confirmed from a notification. It has not been checked against the provider's own records.`
-            : `${transaction.reference} was marked as failed.`,
-        tone: decision === "ACCEPT" ? "success" : "warning",
-      });
+  // Accept and Reject both go through a confirmation dialog first.
+  const review = useTransactionReview({
+    scope: "admin",
+    onReviewed: () => {
       setSelected(null);
       table.refresh();
-    } catch {
-      toast({
-        title: "Could not save the decision",
-        description: "The review was not saved. Please try again.",
-        tone: "error",
-      });
-    } finally {
-      setReviewing(false);
-    }
-  }
+    },
+  });
 
   const columns: Column<ApiTransaction>[] = [
     {
@@ -198,13 +173,13 @@ export function AdminTransactionsList() {
                 {
                   label: "Accept payment",
                   icon: Check,
-                  onSelect: () => void handleReview(transaction, "ACCEPT"),
+                  onSelect: () => review.request(transaction, "ACCEPT"),
                 },
                 {
                   label: "Reject payment",
                   icon: X,
                   variant: "danger" as const,
-                  onSelect: () => void handleReview(transaction, "REJECT"),
+                  onSelect: () => review.request(transaction, "REJECT"),
                 },
               ]
             : []),
@@ -230,16 +205,17 @@ export function AdminTransactionsList() {
         merchantName={selected?.merchantName ?? undefined}
         onAccept={
           selected?.status === "REVIEW"
-            ? () => void handleReview(selected, "ACCEPT")
+            ? () => review.request(selected, "ACCEPT")
             : undefined
         }
         onReject={
           selected?.status === "REVIEW"
-            ? () => void handleReview(selected, "REJECT")
+            ? () => review.request(selected, "REJECT")
             : undefined
         }
-        reviewing={reviewing}
       />
+
+      {review.dialog}
     </div>
   );
 }

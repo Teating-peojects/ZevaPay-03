@@ -668,7 +668,9 @@ export function DataTable<T extends { id: string }>({
                       <TableCell
                         key={column.key}
                         className={cn(
-                          column.align === "right" && "text-right",
+                          // Right-aligned columns hold numbers (amounts,
+                          // percentages). Equal-width digits keep them lined up.
+                          column.align === "right" && "text-right tabular-nums",
                           column.className,
                         )}
                       >

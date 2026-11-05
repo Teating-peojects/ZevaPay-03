@@ -13,7 +13,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
 import { useToast } from "@/components/ui/toast";
-import { apiFetch } from "@/lib/api-client";
+import { useTransactionReview } from "@/components/shared/review-decision";
 import { formatBDT, formatDateTimeShort } from "@/lib/format";
 import { dateRangeBounds } from "@/lib/date-range";
 import { STATUS_FILTER_OPTIONS } from "@/lib/payment-status";
@@ -27,7 +27,6 @@ export function TransactionsList() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [selected, setSelected] = React.useState<ApiTransaction | null>(null);
-  const [reviewing, setReviewing] = React.useState(false);
 
   // The API has no amount filter, so the range is applied to the rows that
   // are on screen. The hint under the inputs says as much.
@@ -64,36 +63,14 @@ export function TransactionsList() {
     }
   });
 
-  async function handleReview(
-    transaction: ApiTransaction,
-    decision: "ACCEPT" | "REJECT",
-  ) {
-    setReviewing(true);
-    try {
-      await apiFetch(`/api/v1/merchant/transactions/${transaction.id}/review`, {
-        method: "POST",
-        body: { decision },
-      });
-      toast({
-        title: decision === "ACCEPT" ? "Payment accepted" : "Payment rejected",
-        description:
-          decision === "ACCEPT"
-            ? `${transaction.reference} was recorded as confirmed from a notification. It has not been checked against the provider's own records.`
-            : `${transaction.reference} was marked as failed.`,
-        tone: decision === "ACCEPT" ? "success" : "warning",
-      });
+  // Accept and Reject both go through a confirmation dialog first.
+  const review = useTransactionReview({
+    scope: "merchant",
+    onReviewed: () => {
       setSelected(null);
       table.refresh();
-    } catch {
-      toast({
-        title: "Could not save the decision",
-        description: "The review was not saved. Please try again.",
-        tone: "error",
-      });
-    } finally {
-      setReviewing(false);
-    }
-  }
+    },
+  });
 
   /**
    * Exports the rows currently on screen.
@@ -305,13 +282,13 @@ export function TransactionsList() {
                 {
                   label: "Accept payment",
                   icon: Check,
-                  onSelect: () => void handleReview(transaction, "ACCEPT"),
+                  onSelect: () => review.request(transaction, "ACCEPT"),
                 },
                 {
                   label: "Reject payment",
                   icon: X,
                   variant: "danger" as const,
-                  onSelect: () => void handleReview(transaction, "REJECT"),
+                  onSelect: () => review.request(transaction, "REJECT"),
                 },
               ]
             : []),
@@ -347,9 +324,8 @@ export function TransactionsList() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  if (selected) void handleReview(selected, "REJECT");
+                  if (selected) review.request(selected, "REJECT");
                 }}
-                loading={reviewing}
                 type="button"
               >
                 <X className="size-4" aria-hidden="true" />
@@ -357,9 +333,8 @@ export function TransactionsList() {
               </Button>
               <Button
                 onClick={() => {
-                  if (selected) void handleReview(selected, "ACCEPT");
+                  if (selected) review.request(selected, "ACCEPT");
                 }}
-                loading={reviewing}
                 type="button"
               >
                 <Check className="size-4" aria-hidden="true" />
@@ -377,6 +352,8 @@ export function TransactionsList() {
           <TransactionDetailsBody transaction={selected} />
         ) : null}
       </Drawer>
+
+      {review.dialog}
     </div>
   );
 }

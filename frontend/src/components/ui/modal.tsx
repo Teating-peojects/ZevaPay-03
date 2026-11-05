@@ -3,6 +3,7 @@
 import * as React from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isTopOverlay, pushOverlay, removeOverlay } from "@/lib/overlay-stack";
 
 export interface ModalProps {
   open: boolean;
@@ -36,17 +37,26 @@ export function Modal({
   const panelRef = React.useRef<HTMLDivElement>(null);
   const previouslyFocused = React.useRef<HTMLElement | null>(null);
 
+  // Callers usually pass an inline `onClose`. Keeping it in a ref means a
+  // parent re-render (a live event refreshing a table, say) does not re-run the
+  // effect below, which would steal focus and reset the scroll lock.
+  const onCloseRef = React.useRef(onClose);
+  React.useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
   React.useEffect(() => {
     if (!open) return;
 
     previouslyFocused.current = document.activeElement as HTMLElement | null;
-    const { overflow } = document.body.style;
-    document.body.style.overflow = "hidden";
+    const overlayId = pushOverlay();
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (!isTopOverlay(overlayId)) return;
+
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -82,11 +92,11 @@ export function Modal({
 
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = overflow;
+      removeOverlay(overlayId);
       window.clearTimeout(timer);
       previouslyFocused.current?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
