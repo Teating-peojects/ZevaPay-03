@@ -5,6 +5,8 @@ import {
   extractAmount,
   extractPhone,
   extractProviderRef,
+  extractSenderReference,
+  extractTimestamp,
 } from "../src/parser/common.js";
 
 const AUTO_ACCEPT = 0.9;
@@ -93,5 +95,75 @@ describe("extraction helpers", () => {
     expect(extractProviderRef("TrxID: 8H2K4L9M")).toBe("8H2K4L9M");
     expect(extractProviderRef("TxnID: NGD778812")).toBe("NGD778812");
     expect(extractProviderRef("Ref: UPY993012")).toBe("UPY993012");
+  });
+});
+
+describe("bKash notification with a sender note", () => {
+  // A real notification: the sender's note (`Ref ajaj`) comes before the
+  // provider's own transaction id (`TrxID DK3508MJ4R`).
+  const REAL_SMS =
+    "You have received Tk 3,000.00 from 01608576689. Ref ajaj. Fee Tk 0.00. Balance Tk 3,052.58. TrxID DK3508MJ4R at 03/11/2026 18:09";
+
+  it("reads the TrxID, not the sender's note", () => {
+    const { result } = parseNotification(REAL_SMS, { expectedProvider: "BKASH" });
+
+    expect(result.providerRef).toBe("DK3508MJ4R");
+    expect(result.senderReference).toBe("ajaj");
+  });
+
+  it("reads the amount and the sender, not the fee or the balance", () => {
+    const { result } = parseNotification(REAL_SMS, { expectedProvider: "BKASH" });
+
+    expect(result.amount).toBe(3000);
+    expect(result.customerPhone).toBe("01608576689");
+    expect(result.outcome).toBe("payment_received");
+  });
+
+  it("reads the day-first date as 3 November 2026, Bangladesh time", () => {
+    const { result } = parseNotification(REAL_SMS, { expectedProvider: "BKASH" });
+
+    expect(result.occurredAt?.toISOString()).toBe("2026-11-03T12:09:00.000Z");
+    expect(result.missing).not.toContain("occurredAt");
+  });
+
+  it("keeps a sender note that has several words", () => {
+    expect(
+      extractSenderReference(
+        "Received Tk 500.00. Ref order 1182. Fee Tk 0.00. TrxID AB12CD34EF",
+      ),
+    ).toBe("order 1182");
+  });
+
+  it("reports no sender note when there is none", () => {
+    expect(
+      extractSenderReference("You have received Tk 500.00. TrxID AB12CD34EF"),
+    ).toBeNull();
+  });
+
+  it("does not report a Ref used as the transaction id as a sender note", () => {
+    expect(extractProviderRef("Payment received. Ref: UPY993012.")).toBe("UPY993012");
+    expect(extractSenderReference("Payment received. Ref: UPY993012.")).toBeNull();
+  });
+});
+
+describe("timestamps", () => {
+  it("reads 12-hour times", () => {
+    expect(extractTimestamp("on 03/11/2026 06:09 PM")?.toISOString()).toBe(
+      "2026-11-03T12:09:00.000Z",
+    );
+    expect(extractTimestamp("on 03/11/2026 12:05 AM")?.toISOString()).toBe(
+      "2026-11-02T18:05:00.000Z",
+    );
+  });
+
+  it("reads the ISO form as Bangladesh time", () => {
+    expect(extractTimestamp("Date: 2026-11-02 16:58")?.toISOString()).toBe(
+      "2026-11-02T10:58:00.000Z",
+    );
+  });
+
+  it("rejects a date that does not exist", () => {
+    expect(extractTimestamp("at 31/02/2026 10:00")).toBeNull();
+    expect(extractTimestamp("at 13/13/2026 10:00")).toBeNull();
   });
 });

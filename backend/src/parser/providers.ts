@@ -4,6 +4,7 @@ import {
   extractName,
   extractPhone,
   extractProviderRef,
+  extractSenderReference,
   extractTimestamp,
   isCredit,
   isDebit,
@@ -159,6 +160,7 @@ const bkashParser: ProviderParser = {
       customerName: name ? cleanName(name) : null,
       customerPhone: extractPhone(clean),
       providerRef: extractProviderRef(clean),
+      senderReference: extractSenderReference(clean),
       occurredAt: extractTimestamp(clean),
     });
   },
@@ -191,6 +193,7 @@ const nagadParser: ProviderParser = {
       customerName: name ? cleanName(name) : null,
       customerPhone: extractPhone(clean),
       providerRef: extractProviderRef(clean),
+      senderReference: extractSenderReference(clean),
       occurredAt: extractTimestamp(clean),
     });
   },
@@ -218,6 +221,7 @@ const rocketParser: ProviderParser = {
       customerName: name ? cleanName(name) : null,
       customerPhone: extractPhone(clean),
       providerRef: extractProviderRef(clean),
+      senderReference: extractSenderReference(clean),
       occurredAt: extractTimestamp(clean),
     });
   },
@@ -245,6 +249,7 @@ const upayParser: ProviderParser = {
       customerName: name ? cleanName(name) : null,
       customerPhone: extractPhone(clean),
       providerRef: extractProviderRef(clean),
+      senderReference: extractSenderReference(clean),
       occurredAt: extractTimestamp(clean),
     });
   },

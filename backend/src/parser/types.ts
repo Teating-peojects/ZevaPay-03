@@ -29,6 +29,12 @@ export interface ParseResult {
   customerPhone: string | null;
   /** Provider-side transaction id extracted from the message. */
   providerRef: string | null;
+  /**
+   * The note the sender typed in the provider's Reference field (`Ref ajaj`).
+   * Free text chosen by the sender: it can help match a payment, but it is
+   * not an identifier and must never be treated as one.
+   */
+  senderReference: string | null;
   /** Timestamp embedded in the message, if the provider includes one. */
   occurredAt: Date | null;
   /** 0..1 — how confident the parser is that the fields are correct. */

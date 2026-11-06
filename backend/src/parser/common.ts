@@ -63,13 +63,58 @@ export function extractAmount(text: string): number | null {
   return null;
 }
 
-/** Extracts a provider transaction reference such as `TrxID: 8H2K4L9M`. */
+/**
+ * Labels that introduce the provider's own transaction id. bKash writes
+ * `TrxID DK3508MJ4R`, Nagad writes `TxnID: NGD778812`.
+ */
+const TRANSACTION_ID_LABELS =
+  "(?:trx\\s*id|txn\\s*id|transaction\\s*id)";
+
+/**
+ * Extracts the provider's transaction id, such as `TrxID: 8H2K4L9M`.
+ *
+ * A message can carry two different things that look alike: the provider's
+ * own id (`TrxID DK3508MJ4R`) and a note the sender typed (`Ref ajaj`). Only
+ * the first identifies the transaction. The note can come first in the text,
+ * so the transaction-id labels are tried before anything else. A bare
+ * `Ref` is accepted only as a fallback, because some providers (Upay) use it
+ * as their transaction id and write no other.
+ */
 export function extractProviderRef(text: string): string | null {
+  const labelled = new RegExp(
+    `${TRANSACTION_ID_LABELS}\\s*[:#-]?\\s*([A-Za-z0-9][A-Za-z0-9-]{3,})`,
+    "i",
+  ).exec(text);
+  if (labelled) return labelled[1].toUpperCase();
+
+  const fallback = /\bref(?:erence)?\s*[:#-]?\s*([A-Za-z0-9][A-Za-z0-9-]{3,})/i.exec(
+    text,
+  );
+  return fallback ? fallback[1].toUpperCase() : null;
+}
+
+/**
+ * Extracts the note the sender typed in the provider's Reference field, for
+ * example `ajaj` from `Ref ajaj.`.
+ *
+ * Returns null when the message has no transaction id of its own: in that
+ * case `Ref` was already used as the transaction id by `extractProviderRef`,
+ * and reporting it twice would mislead.
+ */
+export function extractSenderReference(text: string): string | null {
+  if (
+    !new RegExp(`${TRANSACTION_ID_LABELS}\\s*[:#-]?\\s*[A-Za-z0-9]{4}`, "i").test(
+      text,
+    )
+  ) {
+    return null;
+  }
   const match =
-    /(?:trx\s*id|trxid|txn\s*id|txnid|transaction\s*id|ref(?:erence)?)\s*[:#-]?\s*([A-Za-z0-9][A-Za-z0-9-]{3,})/i.exec(
+    /\bref(?:erence)?\s*[:#-]?\s*(.{1,60}?)(?=\s*\.(?:\s|$)|\s+(?:fee|balance|charge|trx|txn|transaction)\b|$)/i.exec(
       text,
     );
-  return match ? match[1].toUpperCase() : null;
+  const note = match ? match[1].trim() : "";
+  return note.length > 0 ? note : null;
 }
 
 /** Extracts a mobile number in `01XXXXXXXXX` or international form. */
@@ -135,25 +180,84 @@ export function isDebit(text: string): boolean {
 }
 
 /**
- * Extracts a timestamp embedded in the message. Providers use several
- * formats; we accept the common ones and normalise to a Date.
+ * Bangladesh has no daylight saving, so the time printed in an SMS is
+ * always UTC+06:00. Reading it in the server's own zone would shift every
+ * timestamp by the difference.
+ */
+const DHAKA_OFFSET = "+06:00";
+
+function pad(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+/** Builds a Date from SMS date/time parts, or null when they are invalid. */
+function dhakaDate(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second: number,
+): Date | null {
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  if (hour > 23 || minute > 59 || second > 59) return null;
+  const parsed = new Date(
+    `${year}-${pad(month)}-${pad(day)}T${pad(hour)}:${pad(minute)}:${pad(second)}${DHAKA_OFFSET}`,
+  );
+  if (Number.isNaN(parsed.getTime())) return null;
+  // `new Date` rolls 31 Feb over to March. Reject that rather than store a
+  // date the message never said.
+  const check = new Date(parsed.getTime() + 6 * 60 * 60 * 1000);
+  if (check.getUTCMonth() + 1 !== month || check.getUTCDate() !== day) return null;
+  return parsed;
+}
+
+function to24Hour(hour: number, meridiem: string | undefined): number {
+  if (!meridiem) return hour;
+  const pm = meridiem.toUpperCase() === "PM";
+  if (hour === 12) return pm ? 12 : 0;
+  return pm ? hour + 12 : hour;
+}
+
+/**
+ * Extracts a timestamp embedded in the message.
+ *
+ * Accepted: `2026-11-02 16:58` and the day-first form providers use,
+ * `03/11/2026 18:09` (3 November, never 11 March). Times are read as
+ * Bangladesh time.
  */
 export function extractTimestamp(text: string): Date | null {
-  const patterns: RegExp[] = [
-    /(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}(?::\d{2})?)/,
-    /(\d{1,2}\/\d{1,2}\/\d{4})[ ,](\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)/i,
-    /(\d{1,2}\/\d{1,2}\/\d{2,4})[ ,](\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)/i,
-  ];
-
-  for (const pattern of patterns) {
-    const match = pattern.exec(text);
-    if (!match) continue;
-    const parsed = new Date(
-      match[1].replace(/\//g, "-").trim() +
-        "T" +
-        match[2].trim().toUpperCase().replace(/\s+/g, ""),
+  const iso =
+    /(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i.exec(
+      text,
     );
-    if (!Number.isNaN(parsed.getTime())) return parsed;
+  if (iso) {
+    const parsed = dhakaDate(
+      Number(iso[1]),
+      Number(iso[2]),
+      Number(iso[3]),
+      to24Hour(Number(iso[4]), iso[7]),
+      Number(iso[5]),
+      Number(iso[6] ?? 0),
+    );
+    if (parsed) return parsed;
+  }
+
+  const dayFirst =
+    /(\d{1,2})\/(\d{1,2})\/(\d{2,4})[ ,]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i.exec(
+      text,
+    );
+  if (dayFirst) {
+    const rawYear = Number(dayFirst[3]);
+    const parsed = dhakaDate(
+      rawYear < 100 ? 2000 + rawYear : rawYear,
+      Number(dayFirst[2]),
+      Number(dayFirst[1]),
+      to24Hour(Number(dayFirst[4]), dayFirst[7]),
+      Number(dayFirst[5]),
+      Number(dayFirst[6] ?? 0),
+    );
+    if (parsed) return parsed;
   }
 
   return null;

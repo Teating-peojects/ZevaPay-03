@@ -57,6 +57,7 @@ export function parseNotification(
       customerName: null,
       customerPhone: null,
       providerRef: null,
+      senderReference: null,
       occurredAt: null,
       confidence: 0,
       reasons: ["Provider could not be identified from the message."],
