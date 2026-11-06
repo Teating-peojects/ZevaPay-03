@@ -10,7 +10,7 @@ import {
   ForbiddenError,
   NotFoundError,
 } from "../lib/errors.js";
-import { generatePairingCode, sha256 } from "../lib/hash.js";
+import { generateApiKeySecret, generatePairingCode, sha256 } from "../lib/hash.js";
 import {
   serializeAccount,
   serializeDevice,
@@ -800,9 +800,8 @@ export async function registerMerchantRoutes(app: FastifyInstance): Promise<void
         .object({ name: z.string().trim().min(2, "A name is required").max(80) })
         .parse(request.body);
 
-      const secret = `zp_live_${Math.random().toString(36).slice(2, 12)}${Math.random()
-        .toString(36)
-        .slice(2, 12)}`;
+      // `Math.random()` is predictable and must never produce a credential.
+      const secret = generateApiKeySecret();
       const keyPrefix = `${secret.slice(0, 12)}…`;
 
       const key = await prisma.apiKey.create({

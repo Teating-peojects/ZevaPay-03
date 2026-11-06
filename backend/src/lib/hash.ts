@@ -35,3 +35,17 @@ export function generateTransactionReference(): string {
   const value = Math.floor(Math.random() * 900_000) + 100_000;
   return `TXN-${value}`;
 }
+
+/**
+ * A new API key: `zp_live_` followed by 192 bits from the system's
+ * cryptographic random source. The prefix lets a key be recognised on sight
+ * (and by secret scanners) without revealing anything about the rest.
+ */
+export function generateApiKeySecret(): string {
+  return `zp_live_${randomBytes(24).toString("base64url")}`;
+}
+
+/** Whether a value has the shape of an API key. Says nothing about validity. */
+export function looksLikeApiKey(value: string): boolean {
+  return /^zp_live_[A-Za-z0-9_-]{32}$/.test(value);
+}

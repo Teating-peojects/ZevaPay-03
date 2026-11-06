@@ -12,6 +12,7 @@ import { registerMerchantRoutes } from "./routes/merchant.js";
 import { registerAdminRoutes } from "./routes/admin.js";
 import { registerDeviceRoutes } from "./routes/device.js";
 import { registerStreamRoutes } from "./routes/stream.js";
+import { registerCheckoutRoutes } from "./routes/checkout.js";
 import { registerPaymentRoutes } from "./routes/payments.js";
 import { registerCustomerRoutes } from "./routes/customers.js";
 
@@ -105,6 +106,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await registerAuthRoutes(app);
   await registerMerchantRoutes(app);
   await registerPaymentRoutes(app);
+  await registerCheckoutRoutes(app);
   await registerCustomerRoutes(app);
   await registerAdminRoutes(app);
   await registerDeviceRoutes(app);

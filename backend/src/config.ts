@@ -23,6 +23,9 @@ const envSchema = z.object({
   JWT_ACCESS_TTL: z.string().default("15m"),
   JWT_REFRESH_TTL: z.string().default("30d"),
 
+  /** Public address of the web app. Checkout links are built from it. */
+  PUBLIC_APP_URL: z.string().url().optional(),
+
   /** Origins allowed to call the API with credentials. */
   CORS_ORIGINS: z.string().default("http://localhost:3000"),
 
@@ -66,6 +69,11 @@ export const config = {
     accessTtl: env.JWT_ACCESS_TTL,
     refreshTtl: env.JWT_REFRESH_TTL,
   },
+  publicAppUrl: (
+    env.PUBLIC_APP_URL ??
+    env.CORS_ORIGINS.split(",")[0]?.trim() ??
+    "http://localhost:3000"
+  ).replace(/\/$/, ""),
   corsOrigins: env.CORS_ORIGINS.split(",")
     .map((origin) => origin.trim())
     .filter(Boolean),

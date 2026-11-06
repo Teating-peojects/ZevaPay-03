@@ -1,96 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// ---------------------------------------------------------------------------
-// A small in-memory stand-in for the database. It supports exactly the
-// queries the matcher uses, and `$transaction` rolls everything back when the
-// callback throws, as the real one does. It checks the matcher's logic; it is
-// not a substitute for running against Postgres.
-// ---------------------------------------------------------------------------
-const fake = vi.hoisted(() => {
-  type Row = Record<string, any>;
-  const store = {
-    transactions: [] as Row[],
-    payments: [] as Row[],
-    attempts: [] as Row[],
-    audits: [] as Row[],
-  };
+import { prisma as fakePrisma, store } from "./helpers/fake-prisma.js";
 
-  function matches(row: Row, where: Row | undefined): boolean {
-    if (!where) return true;
-    return Object.entries(where).every(([key, want]) => {
-      if (key === "payment") {
-        const payment = store.payments.find((p) => p.id === row.paymentId);
-        return !!payment && matches(payment, want);
-      }
-      const have = row[key];
-      if (want !== null && typeof want === "object" && !(want instanceof Date)) {
-        if ("in" in want) return want.in.includes(have);
-        if ("notIn" in want) return !want.notIn.includes(have);
-        if ("not" in want) return have !== want.not;
-        if ("gt" in want) return have > want.gt;
-      }
-      return have === want;
-    });
-  }
-
-  function table(rows: () => Row[], extras: (row: Row) => Row = (r) => r) {
-    return {
-      findUnique: async ({ where }: Row) => {
-        const row = rows().find((r) => r.id === where.id);
-        return row ? extras(row) : null;
-      },
-      findMany: async ({ where, orderBy, take }: Row) => {
-        let found = rows().filter((r) => matches(r, where));
-        if (orderBy?.createdAt) {
-          found = [...found].sort((a, b) => a.createdAt - b.createdAt);
-        }
-        return found.slice(0, take ?? found.length).map(extras);
-      },
-      updateMany: async ({ where, data }: Row) => {
-        const found = rows().filter((r) => matches(r, where));
-        found.forEach((r) => Object.assign(r, data));
-        return { count: found.length };
-      },
-      update: async ({ where, data }: Row) => {
-        const row = rows().find((r) => r.id === where.id)!;
-        Object.assign(row, data);
-        return extras(row);
-      },
-      findFirst: async ({ where }: Row) => {
-        const row = rows().find((r) => matches(r, where));
-        return row ? extras(row) : null;
-      },
-    };
-  }
-
-  const withPayment = (a: Row) => ({
-    ...a,
-    payment: store.payments.find((p) => p.id === a.paymentId),
-  });
-
-  const prisma: Row = {
-    transaction: table(() => store.transactions),
-    payment: table(() => store.payments),
-    paymentAttempt: table(() => store.attempts, withPayment),
-    $transaction: async (callback: (tx: Row) => Promise<unknown>) => {
-      const snapshot = structuredClone(store);
-      try {
-        return await callback(prisma);
-      } catch (error) {
-        store.transactions = snapshot.transactions;
-        store.payments = snapshot.payments;
-        store.attempts = snapshot.attempts;
-        throw error;
-      }
-    },
-  };
-  return { store, prisma };
-});
-
-vi.mock("../src/db.js", () => ({ prisma: fake.prisma }));
+vi.mock("../src/db.js", async () => ({
+  prisma: (await import("./helpers/fake-prisma.js")).prisma,
+}));
 vi.mock("../src/lib/audit.js", () => ({
   recordAudit: async (entry: Record<string, unknown>) => {
-    fake.store.audits.push(entry);
+    (await import("./helpers/fake-prisma.js")).store.audits.push(entry);
   },
 }));
 
@@ -109,8 +26,7 @@ const REAL_SMS =
 const SMS_TIME = new Date("2026-11-03T12:09:00.000Z");
 
 function seed(overrides: { payment?: object; transaction?: object; attempt?: object } = {}) {
-  const { store } = fake;
-  store.transactions = [
+    store.transactions = [
     {
       id: "t1",
       merchantId: "m1",
@@ -260,7 +176,6 @@ describe("settleFromTransaction", () => {
     const result = await settleFromTransaction("t1");
 
     expect(result?.outcome).toBe("approved");
-    const { store } = fake;
     expect(store.payments[0].status).toBe("CONFIRMED");
     expect(store.payments[0].confirmedAt).toBeInstanceOf(Date);
     expect(store.transactions[0]).toMatchObject({ status: "CONFIRMED", paymentId: "p1" });
@@ -273,7 +188,6 @@ describe("settleFromTransaction", () => {
     const result = await settleFromTransaction("t1");
 
     expect(result?.outcome).toBe("review");
-    const { store } = fake;
     expect(store.payments[0].status).toBe("REVIEW");
     expect(store.transactions[0]).toMatchObject({ status: "REVIEW", paymentId: "p1" });
     expect(store.attempts[0].status).toBe("REVIEW");
@@ -282,13 +196,13 @@ describe("settleFromTransaction", () => {
   it("does nothing when no customer has given that TrxID", async () => {
     seed({ attempt: { providerReference: "OTHER12345" } });
     expect(await settleFromTransaction("t1")).toBeNull();
-    expect(fake.store.payments[0].status).toBe("PENDING");
+    expect(store.payments[0].status).toBe("PENDING");
   });
 
   it("does not match another merchant's payment", async () => {
     seed({ payment: { merchantId: "m2" } });
     expect(await settleFromTransaction("t1")).toBeNull();
-    expect(fake.store.payments[0].status).toBe("PENDING");
+    expect(store.payments[0].status).toBe("PENDING");
   });
 
   it("does not match another provider", async () => {
@@ -305,8 +219,8 @@ describe("settleFromTransaction", () => {
       },
     });
     expect(await settleFromTransaction("t1")).toBeNull();
-    expect(fake.store.payments[0].status).toBe("PENDING");
-    expect(fake.store.transactions[0].paymentId).toBeNull();
+    expect(store.payments[0].status).toBe("PENDING");
+    expect(store.transactions[0].paymentId).toBeNull();
   });
 
   it("uses a notification for one payment only", async () => {
@@ -319,22 +233,22 @@ describe("settleFromTransaction", () => {
     // cancelled. The claim on the payment fails and the claim on the
     // notification must be undone.
     seed({ payment: { status: "CANCELLED" } });
-    fake.store.attempts[0].status = "PENDING";
+    store.attempts[0].status = "PENDING";
     // Bypass the lookup filter by calling through the attempt path.
     expect(await settleFromAttempt("a1")).toBeNull();
-    expect(fake.store.transactions[0]).toMatchObject({ status: "PENDING", paymentId: null });
-    expect(fake.store.payments[0].status).toBe("CANCELLED");
+    expect(store.transactions[0]).toMatchObject({ status: "PENDING", paymentId: null });
+    expect(store.payments[0].status).toBe("CANCELLED");
   });
 
   it("prefers the payment whose amount agrees when two customers typed the same TrxID", async () => {
     seed();
-    fake.store.payments.push({
-      ...fake.store.payments[0],
+    store.payments.push({
+      ...store.payments[0],
       id: "p2",
       amountMinor: 999900,
     });
-    fake.store.attempts.unshift({
-      ...fake.store.attempts[0],
+    store.attempts.unshift({
+      ...store.attempts[0],
       id: "a0",
       paymentId: "p2",
       createdAt: new Date(SMS_TIME.getTime() - 120_000),
@@ -342,7 +256,7 @@ describe("settleFromTransaction", () => {
 
     const result = await settleFromTransaction("t1");
     expect(result).toMatchObject({ outcome: "approved", paymentId: "p1" });
-    expect(fake.store.payments.find((p) => p.id === "p2")?.status).toBe("PENDING");
+    expect(store.payments.find((p) => p.id === "p2")?.status).toBe("PENDING");
   });
 });
 
@@ -351,18 +265,18 @@ describe("settleFromAttempt", () => {
     const result = await settleFromAttempt("a1");
 
     expect(result?.outcome).toBe("approved");
-    expect(fake.store.payments[0].status).toBe("CONFIRMED");
-    expect(fake.store.transactions[0].paymentId).toBe("p1");
+    expect(store.payments[0].status).toBe("CONFIRMED");
+    expect(store.transactions[0].paymentId).toBe("p1");
   });
 
   it("waits when no SMS has arrived", async () => {
-    fake.store.transactions = [];
+    store.transactions = [];
     expect(await settleFromAttempt("a1")).toBeNull();
-    expect(fake.store.payments[0].status).toBe("PENDING");
+    expect(store.payments[0].status).toBe("PENDING");
   });
 
   it("cancels the customer's other open attempts once one settles", async () => {
-    fake.store.attempts.push({
+    store.attempts.push({
       id: "a2",
       paymentId: "p1",
       provider: "BKASH",
@@ -371,7 +285,7 @@ describe("settleFromAttempt", () => {
       createdAt: new Date(SMS_TIME.getTime() - 30_000),
     });
     await settleFromAttempt("a1");
-    expect(fake.store.attempts.find((a) => a.id === "a2")?.status).toBe("CANCELLED");
+    expect(store.attempts.find((a) => a.id === "a2")?.status).toBe("CANCELLED");
   });
 });
 
@@ -379,31 +293,31 @@ describe("resolvePaymentAfterReview", () => {
   async function reviewed() {
     seed({ transaction: { amountMinor: 250000 } });
     await settleFromTransaction("t1"); // payment, transaction and attempt -> REVIEW
-    return { ...fake.store.transactions[0] };
+    return { ...store.transactions[0] };
   }
 
   it("confirms the payment when the reviewer accepts", async () => {
     const transaction = await reviewed();
-    const result = await resolvePaymentAfterReview(fake.prisma as never, transaction as never, "ACCEPT");
+    const result = await resolvePaymentAfterReview(fakePrisma as never, transaction as never, "ACCEPT");
 
     expect(result).toEqual({ paymentId: "p1", status: "CONFIRMED" });
-    expect(fake.store.payments[0].status).toBe("CONFIRMED");
-    expect(fake.store.attempts[0].status).toBe("CONFIRMED");
+    expect(store.payments[0].status).toBe("CONFIRMED");
+    expect(store.attempts[0].status).toBe("CONFIRMED");
   });
 
   it("reopens the payment when the reviewer rejects", async () => {
     const transaction = await reviewed();
-    const result = await resolvePaymentAfterReview(fake.prisma as never, transaction as never, "REJECT");
+    const result = await resolvePaymentAfterReview(fakePrisma as never, transaction as never, "REJECT");
 
     expect(result).toEqual({ paymentId: "p1", status: "PENDING" });
-    expect(fake.store.payments[0].status).toBe("PENDING");
-    expect(fake.store.attempts[0].status).toBe("FAILED");
+    expect(store.payments[0].status).toBe("PENDING");
+    expect(store.attempts[0].status).toBe("FAILED");
   });
 
   it("does nothing for a notification that was never matched", async () => {
     seed();
     const result = await resolvePaymentAfterReview(
-      fake.prisma as never,
+      fakePrisma as never,
       { paymentId: null, providerRef: "DK3508MJ4R", merchantId: "m1" },
       "ACCEPT",
     );
@@ -413,11 +327,11 @@ describe("resolvePaymentAfterReview", () => {
   it("does not touch a payment that is not waiting in review", async () => {
     seed({ payment: { status: "CANCELLED" } });
     const result = await resolvePaymentAfterReview(
-      fake.prisma as never,
+      fakePrisma as never,
       { paymentId: "p1", providerRef: "DK3508MJ4R", merchantId: "m1" },
       "ACCEPT",
     );
     expect(result).toBeNull();
-    expect(fake.store.payments[0].status).toBe("CANCELLED");
+    expect(store.payments[0].status).toBe("CANCELLED");
   });
 });

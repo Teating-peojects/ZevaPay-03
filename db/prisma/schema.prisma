@@ -441,6 +441,9 @@ model Payment {
   metadata Json?
   expiresAt DateTime?
   confirmedAt DateTime?
+  /// SHA-256 of the secret in a hosted checkout link. Only the hash is stored,
+  /// so a copy of the database does not reveal anyone's checkout link.
+  checkoutTokenHash String? @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?

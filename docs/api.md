@@ -224,6 +224,19 @@ role/permission tables. Tenant IDs come from the authenticated session.
 | PATCH | `/merchant/customers/:id` | Update a merchant-scoped customer |
 | DELETE | `/merchant/customers/:id` | Delete a merchant-scoped customer |
 
+### Hosted checkout
+
+Server-to-server routes authenticated with an API key
+(`Authorization: Bearer zp_live_…`) and the customer-facing routes behind the
+checkout page. See [checkout-integration.md](./checkout-integration.md).
+
+| Method | Path | Auth | Description |
+| ------ | ---- | ---- | ----------- |
+| POST | `/checkout/payments` | API key | Create a payment and get a `checkoutUrl` |
+| GET | `/checkout/payments/:id` | API key | Status of one of the merchant's payments |
+| GET | `/public/checkout/:token` | link secret | What the customer's page shows |
+| POST | `/public/checkout/:token/trxid` | link secret | The customer's TrxID |
+
 ### Matching a TrxID to an SMS
 
 `POST /merchant/payments/:id/attempts` takes `{ "provider": "BKASH" | "NAGAD", "trxId": "DK3508MJ4R" }`

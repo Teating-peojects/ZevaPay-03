@@ -75,6 +75,7 @@ The front end listens on `http://localhost:3000`.
 | `JWT_ACCESS_TTL`         | `15m`                      | Access-token lifetime                          |
 | `JWT_REFRESH_TTL`        | `30d`                      | Refresh-token lifetime                         |
 | `CORS_ORIGINS`           | `http://localhost:3000`    | Comma-separated allow-list                     |
+| `PUBLIC_APP_URL`         | first `CORS_ORIGINS` entry | Address customers open for hosted checkout     |
 | `DEVICE_INGEST_SECRET`   | `dev-device-ingest-secret` | At least 16 chars. Shared with the devices     |
 | `AUTO_ACCEPT_CONFIDENCE` | `0.9`                      | Parser threshold, 0–1                          |
 | `LOG_LEVEL`              | `info`                     |                                                |
