@@ -185,6 +185,10 @@ export default function PaymentsPage() {
         payment={selected}
         onClose={() => setSelected(null)}
         onCancel={(payment) => setCancelling(payment)}
+        onChanged={(payment) => {
+          setSelected(payment);
+          table.refresh();
+        }}
       />
 
       <NewPaymentModal

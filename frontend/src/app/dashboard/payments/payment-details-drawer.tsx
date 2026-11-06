@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { Ban } from "lucide-react";
 import { PaymentStatusBadge } from "@/components/shared/payment-status-badge";
 import { ProviderBadge } from "@/components/shared/provider-badge";
@@ -10,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { formatBDT, formatDateTime } from "@/lib/format";
+import { TrxIdForm, type TrxMatch } from "./trxid-form";
 import { statusDisplay } from "@/lib/payment-status";
 import type { ApiPayment, ApiPaymentDetail } from "@/types/api";
 
@@ -22,6 +24,26 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
       <dd className="min-w-0 text-right text-[13px] text-ink">{children}</dd>
     </div>
   );
+}
+
+/**
+ * What a payment's status means for the person looking at it. Payments settle
+ * by matching a TrxID and amount with an SMS, so the generic wording written
+ * for notifications does not fit these four statuses.
+ */
+function paymentNote(status: ApiPayment["status"]): { tone: "info" | "success" | "warning"; text: string } | null {
+  switch (status) {
+    case "CREATED":
+      return { tone: "info", text: "No TrxID has been recorded yet. Enter the TrxID the customer gives you after paying." };
+    case "PENDING":
+      return { tone: "info", text: "A TrxID is recorded. Waiting for a matching SMS from your device." };
+    case "REVIEW":
+      return { tone: "warning", text: "An SMS with this TrxID was found, but something did not agree. Decide it under Transactions." };
+    case "CONFIRMED":
+      return { tone: "success", text: "The TrxID and amount matched an SMS your device recorded. This is not a check with bKash or Nagad." };
+    default:
+      return null;
+  }
 }
 
 interface ActivityEntry {
@@ -44,7 +66,7 @@ function buildActivity(payment: ApiPaymentDetail): ActivityEntry[] {
       at: attempt.createdAt,
       title: `Attempt through ${attempt.provider}`,
       detail: attempt.providerReference
-        ? `Reference ${attempt.providerReference}`
+        ? `TrxID ${attempt.providerReference}`
         : undefined,
     });
   }
@@ -60,10 +82,49 @@ function buildActivity(payment: ApiPaymentDetail): ActivityEntry[] {
   return entries.sort((a, b) => a.at.localeCompare(b.at));
 }
 
+/** What happened to the TrxID the merchant just submitted. */
+function MatchResult({ match }: { match: TrxMatch }) {
+  if (match.outcome === "approved") {
+    return (
+      <Alert tone="success" title="Payment confirmed from SMS">
+        The TrxID and amount matched an SMS your device recorded. This is not a check with the provider.
+      </Alert>
+    );
+  }
+  if (match.outcome === "review") {
+    return (
+      <Alert tone="warning" title="Sent for review">
+        <ul className="list-disc pl-4">
+          {match.reasons.map((reason) => (
+            <li key={reason}>{reason}</li>
+          ))}
+        </ul>
+        <Link href="/dashboard/transactions" className="mt-1 inline-block font-medium underline">
+          Open transactions
+        </Link>
+      </Alert>
+    );
+  }
+  return (
+    <Alert tone="info" title="Waiting for the SMS">
+      No SMS with this TrxID has been recorded yet. The payment confirms by itself when it arrives, if the amount agrees.
+    </Alert>
+  );
+}
+
 /** Loads the full payment while the drawer is open. Keyed by id by the parent. */
-function DrawerBody({ payment }: { payment: ApiPayment }) {
+function DrawerBody({
+  payment,
+  onChanged,
+}: {
+  payment: ApiPayment;
+  onChanged: (payment: ApiPayment) => void;
+}) {
   const [detail, setDetail] = React.useState<ApiPaymentDetail | null>(null);
   const [failed, setFailed] = React.useState<string | null>(null);
+  // Bumped after a TrxID is submitted so the detail is loaded again.
+  const [version, setVersion] = React.useState(0);
+  const [lastMatch, setLastMatch] = React.useState<TrxMatch | null>(null);
 
   React.useEffect(() => {
     const controller = new AbortController();
@@ -71,7 +132,10 @@ function DrawerBody({ payment }: { payment: ApiPayment }) {
       `/api/v1/merchant/payments/${payment.id}`,
       { signal: controller.signal },
     )
-      .then((response) => setDetail(response.data))
+      .then((response) => {
+        setFailed(null);
+        setDetail(response.data);
+      })
       .catch((caught) => {
         if (controller.signal.aborted) return;
         setFailed(
@@ -81,9 +145,10 @@ function DrawerBody({ payment }: { payment: ApiPayment }) {
         );
       });
     return () => controller.abort();
-  }, [payment.id]);
+  }, [payment.id, version]);
 
   const display = statusDisplay(payment.status);
+  const note = paymentNote(payment.status);
   const customer = detail?.customer ?? null;
 
   return (
@@ -95,9 +160,25 @@ function DrawerBody({ payment }: { payment: ApiPayment }) {
         <PaymentStatusBadge status={payment.status} />
       </div>
 
-      <Alert tone={display.tone === "neutral" ? "info" : display.tone} title={display.label}>
-        {display.description}
+      <Alert
+        tone={note?.tone ?? (display.tone === "neutral" ? "info" : display.tone)}
+        title={display.label}
+      >
+        {note?.text ?? display.description}
       </Alert>
+
+      {lastMatch ? <MatchResult match={lastMatch} /> : null}
+
+      {payment.status === "CREATED" || payment.status === "PENDING" ? (
+        <TrxIdForm
+          payment={payment}
+          onResult={(fresh, match) => {
+            setLastMatch(match);
+            setVersion((current) => current + 1);
+            onChanged(fresh);
+          }}
+        />
+      ) : null}
 
       <dl>
         <Row label="Reference">
@@ -176,6 +257,11 @@ function DrawerBody({ payment }: { payment: ApiPayment }) {
                 className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5"
               >
                 <ProviderBadge provider={attempt.provider} size="sm" />
+                {attempt.providerReference ? (
+                  <span className="font-mono text-[12px] text-ink-soft">
+                    {attempt.providerReference}
+                  </span>
+                ) : null}
                 <span className="text-[13px] font-medium text-ink tabular-nums">
                   {formatBDT(attempt.amountMinor / 100)}
                 </span>
@@ -193,10 +279,13 @@ export function PaymentDetailsDrawer({
   payment,
   onClose,
   onCancel,
+  onChanged,
 }: {
   payment: ApiPayment | null;
   onClose: () => void;
   onCancel: (payment: ApiPayment) => void;
+  /** Called with the fresh payment after a TrxID is submitted. */
+  onChanged: (payment: ApiPayment) => void;
 }) {
   return (
     <Drawer
@@ -219,7 +308,7 @@ export function PaymentDetailsDrawer({
         </>
       }
     >
-      {payment ? <DrawerBody key={payment.id} payment={payment} /> : null}
+      {payment ? <DrawerBody key={payment.id} payment={payment} onChanged={onChanged} /> : null}
     </Drawer>
   );
 }
