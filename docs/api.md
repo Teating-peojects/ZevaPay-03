@@ -216,12 +216,40 @@ role/permission tables. Tenant IDs come from the authenticated session.
 | GET | `/merchant/payments` | Paginated payments; optional `status` |
 | POST | `/merchant/payments` | Create a payment using `amountMinor` and `currency` |
 | GET | `/merchant/payments/:id` | Payment with attempts and customer details |
+| POST | `/merchant/payments/:id/attempts` | Record the customer's TrxID and match it to a recorded SMS (see below) |
 | PATCH | `/merchant/payments/:id/status` | Validated non-confirming status transition |
 | GET | `/merchant/customers` | Paginated customer list; optional `q` |
 | POST | `/merchant/customers` | Create a merchant-scoped customer |
 | GET | `/merchant/customers/:id` | Customer and recent payments |
 | PATCH | `/merchant/customers/:id` | Update a merchant-scoped customer |
 | DELETE | `/merchant/customers/:id` | Delete a merchant-scoped customer |
+
+### Matching a TrxID to an SMS
+
+`POST /merchant/payments/:id/attempts` takes `{ "provider": "BKASH" | "NAGAD", "trxId": "DK3508MJ4R" }`
+and returns `201` with `{ data: { payment, attemptId, match } }`.
+
+A payment is settled when a recorded SMS agrees with the customer on the
+**provider, the TrxID and the amount**, in either order (SMS first or TrxID
+first). `match.outcome` is one of:
+
+| `outcome` | Meaning |
+| --------- | ------- |
+| `approved` | TrxID and amount matched. The payment and the notification are `CONFIRMED`. |
+| `review` | The TrxID matched but something did not agree (amount, a date before the payment, an SMS after expiry). Both go to `REVIEW`; `match.reasons` says why. Accepting the notification confirms the payment, rejecting it reopens the payment. |
+| `waiting` | No matching SMS has been recorded yet. The payment is `PENDING` and the SMS settles it when it arrives. |
+
+Rules the server enforces:
+
+- Only a message that says money was received can match. A debit or failure
+  notice with the same TrxID and amount never does.
+- One TrxID settles one payment. A TrxID that was already submitted, or whose
+  SMS was already used, is refused with `409`.
+- At most 5 TrxIDs may be tried per payment (`409` after that), and the route
+  is rate limited.
+- A payment can only be confirmed this way or by accepting its notification.
+  `PATCH /merchant/payments/:id/status` still refuses `CONFIRMED`.
+- `CONFIRMED` means a notification matched. It is not a check with the provider.
 
 ## Admin — `/api/v1/admin`
 
@@ -317,6 +345,10 @@ The response says what the parser made of it:
   confidence.
 - A repeated notification returns `{ "duplicate": true }` and does not create a
   second transaction.
+- If a customer has already given this notification's TrxID for a payment and
+  the amount agrees, the transaction is stored as `CONFIRMED`, the payment is
+  confirmed, and the response has `"autoAccepted": true` and a `paymentId`.
+  A disagreement stores both as `REVIEW`. See *Matching a TrxID to an SMS*.
 
 ---
 

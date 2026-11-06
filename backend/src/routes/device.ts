@@ -10,6 +10,7 @@ import {
 } from "../lib/errors.js";
 import { generateTransactionReference } from "../lib/hash.js";
 import { parseNotification } from "../parser/index.js";
+import { settleFromTransaction, type SettleResult } from "../lib/payment-matching.js";
 import { serializeTransaction } from "../lib/serializers.js";
 
 const notificationSchema = z.object({
@@ -215,26 +216,55 @@ export async function registerDeviceRoutes(app: FastifyInstance): Promise<void> 
         },
       });
 
+      // If a customer already gave this TrxID for a payment, settle it now.
+      // A failure here must never lose the notification, which is already
+      // saved, so it is logged and the notification is left for review.
+      let settlement: SettleResult | null = null;
+      if (
+        result.outcome === "payment_received" &&
+        result.directionExplicit &&
+        result.providerRef
+      ) {
+        try {
+          settlement = await settleFromTransaction(transaction.id);
+        } catch (error) {
+          request.log.error({ err: error }, "payment matching failed");
+        }
+      }
+
+      // Matching may have changed the status, so publish what is stored.
+      const current = settlement
+        ? await prisma.transaction.findUniqueOrThrow({
+            where: { id: transaction.id },
+            include: {
+              account: { select: { label: true } },
+              device: { select: { name: true } },
+            },
+          })
+        : transaction;
+
       eventHub.publish(
         channels.merchant(device.merchantId),
         "transaction.created",
-        serializeTransaction(transaction),
+        serializeTransaction(current),
       );
       eventHub.publish(channels.platform, "transaction.created", {
         merchantId: device.merchantId,
-        transaction: serializeTransaction(transaction),
+        transaction: serializeTransaction(current),
       });
 
       return reply.status(201).send({
         duplicate: false,
         transactionId: transaction.id,
         reference: transaction.reference,
-        status,
+        status: current.status,
         confidence: result.confidence,
-        autoAccepted: false,
-        verificationRequired: true,
+        // True only when the SMS matched a payment's TrxID and amount.
+        autoAccepted: settlement?.outcome === "approved",
+        verificationRequired: settlement?.outcome !== "approved",
+        paymentId: settlement?.paymentId ?? null,
         missing: result.missing,
-        reasons: result.reasons,
+        reasons: [...result.reasons, ...(settlement?.reasons ?? [])],
       });
     },
   );

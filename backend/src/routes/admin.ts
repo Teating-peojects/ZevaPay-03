@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { recordAudit } from "../lib/audit.js";
+import { resolvePaymentAfterReview } from "../lib/payment-matching.js";
 import { channels, eventHub } from "../lib/events.js";
 import {
   BadRequestError,
@@ -413,19 +414,25 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         throw new BadRequestError("That transaction is not awaiting review.");
       }
 
-      const updated = await prisma.transaction.update({
-        where: { id },
-        data: {
-          status: body.decision === "ACCEPT" ? "CONFIRMED" : "FAILED",
-          reviewedById: request.auth!.userId,
-          reviewedAt: new Date(),
-          confidence: body.decision === "ACCEPT" ? 1 : transaction.confidence,
-        },
-        include: {
-          merchant: { select: { businessName: true } },
-          account: { select: { label: true } },
-          device: { select: { name: true } },
-        },
+      // The notification and the payment it was matched to are decided
+      // together, so they can never disagree.
+      const { updated, paymentResult } = await prisma.$transaction(async (tx) => {
+        const updated = await tx.transaction.update({
+          where: { id },
+          data: {
+            status: body.decision === "ACCEPT" ? "CONFIRMED" : "FAILED",
+            reviewedById: request.auth!.userId,
+            reviewedAt: new Date(),
+            confidence: body.decision === "ACCEPT" ? 1 : transaction.confidence,
+          },
+          include: {
+            merchant: { select: { businessName: true } },
+            account: { select: { label: true } },
+            device: { select: { name: true } },
+          },
+        });
+        const paymentResult = await resolvePaymentAfterReview(tx, updated, body.decision);
+        return { updated, paymentResult };
       });
 
       await recordAudit({
@@ -435,6 +442,22 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         metadata: { transactionId: id, decision: body.decision, note: body.note },
         ipAddress: request.ip,
       });
+
+      if (paymentResult) {
+        await recordAudit({
+          action: "PAYMENT_STATUS_CHANGED",
+          actorId: request.auth!.userId,
+          merchantId: updated.merchantId,
+          metadata: {
+            paymentId: paymentResult.paymentId,
+            status: paymentResult.status,
+            source: "transaction_review",
+            transactionId: updated.id,
+            decision: body.decision,
+          },
+          ipAddress: request.ip,
+        });
+      }
 
       eventHub.publish(
         channels.merchant(transaction.merchantId),

@@ -1,10 +1,16 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../db.js";
-import { ConflictError, NotFoundError } from "../lib/errors.js";
+import { BadRequestError, ConflictError, NotFoundError } from "../lib/errors.js";
 import { generateTransactionReference } from "../lib/hash.js";
 import { recordAudit } from "../lib/audit.js";
 import { canTransitionPaymentStatus } from "../lib/payment-state.js";
+import {
+  CHECKOUT_PROVIDERS,
+  MAX_ATTEMPTS_PER_PAYMENT,
+  normalizeTrxId,
+  settleFromAttempt,
+} from "../lib/payment-matching.js";
 import { paymentStatusSchema, paginationSchema } from "../schemas/common.js";
 
 const createSchema = z.object({
@@ -13,6 +19,11 @@ const createSchema = z.object({
   description: z.string().trim().max(500).optional(),
   customerId: z.string().optional(),
   expiresAt: z.coerce.date().optional(),
+});
+
+const attemptSchema = z.object({
+  provider: z.enum(CHECKOUT_PROVIDERS),
+  trxId: z.string().trim().min(4).max(40),
 });
 
 export async function registerPaymentRoutes(app: FastifyInstance): Promise<void> {
@@ -52,6 +63,105 @@ export async function registerPaymentRoutes(app: FastifyInstance): Promise<void>
     if (!payment) throw new NotFoundError("That payment could not be found.");
     return { data: payment };
   });
+
+  /**
+   * Records the TrxID a customer gave for a payment, then looks for the SMS
+   * that proves it. If the SMS is already here and agrees on TrxID and amount
+   * the payment is confirmed; if it disagrees it goes to review; if it has not
+   * arrived yet the payment waits and the SMS settles it when it does.
+   */
+  app.post<{ Params: { id: string } }>(
+    "/api/v1/merchant/payments/:id/attempts",
+    { ...write, config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
+    async (request, reply) => {
+      const merchantId = await app.resolveMerchantId(request);
+      const body = attemptSchema.parse(request.body);
+      const trxId = normalizeTrxId(body.trxId);
+      if (!trxId) {
+        throw new BadRequestError("Enter the TrxID exactly as it appears in the provider's confirmation message.");
+      }
+
+      const payment = await prisma.payment.findFirst({
+        where: { id: request.params.id, merchantId, deletedAt: null },
+        include: { _count: { select: { attempts: true } } },
+      });
+      if (!payment) throw new NotFoundError("That payment could not be found.");
+      if (payment.status !== "CREATED" && payment.status !== "PENDING") {
+        throw new ConflictError("This payment is no longer waiting for a TrxID.");
+      }
+      if (payment.expiresAt && payment.expiresAt.getTime() < Date.now()) {
+        throw new ConflictError("This payment has expired.");
+      }
+      if (payment._count.attempts >= MAX_ATTEMPTS_PER_PAYMENT) {
+        throw new ConflictError("Too many TrxIDs have been tried for this payment.");
+      }
+
+      // One TrxID, one payment. It is spent as soon as it is submitted or as
+      // soon as its SMS has been used, whichever happened first.
+      const [alreadySubmitted, alreadyUsed] = await Promise.all([
+        prisma.paymentAttempt.findFirst({
+          where: {
+            provider: body.provider,
+            providerReference: trxId,
+            status: { notIn: ["FAILED", "CANCELLED"] },
+            payment: { merchantId },
+          },
+          select: { id: true },
+        }),
+        prisma.transaction.findFirst({
+          where: { merchantId, provider: body.provider, providerRef: trxId, paymentId: { not: null } },
+          select: { id: true },
+        }),
+      ]);
+      if (alreadySubmitted || alreadyUsed) {
+        throw new ConflictError("That TrxID has already been used for a payment.");
+      }
+
+      const attempt = await prisma.$transaction(async (tx) => {
+        const created = await tx.paymentAttempt.create({
+          data: {
+            paymentId: payment.id,
+            provider: body.provider,
+            amountMinor: payment.amountMinor,
+            currency: payment.currency,
+            providerReference: trxId,
+            status: "PENDING",
+          },
+        });
+        if (payment.status === "CREATED") {
+          await tx.payment.updateMany({
+            where: { id: payment.id, status: "CREATED" },
+            data: { status: "PENDING" },
+          });
+        }
+        return created;
+      });
+
+      await recordAudit({
+        action: "PAYMENT_STATUS_CHANGED",
+        actorId: request.auth!.userId,
+        merchantId,
+        metadata: { paymentId: payment.id, attemptId: attempt.id, event: "trxid_submitted", provider: body.provider, trxId },
+        ipAddress: request.ip,
+      });
+
+      const match = await settleFromAttempt(attempt.id);
+      const fresh = await prisma.payment.findUnique({
+        where: { id: payment.id },
+        include: { attempts: { orderBy: { createdAt: "desc" } } },
+      });
+
+      return reply.status(201).send({
+        data: {
+          payment: fresh,
+          attemptId: attempt.id,
+          match: match
+            ? { outcome: match.outcome, reasons: match.reasons }
+            : { outcome: "waiting", reasons: [] },
+        },
+      });
+    },
+  );
 
   app.patch<{ Params: { id: string } }>("/api/v1/merchant/payments/:id/status", write, async (request) => {
     const merchantId = await app.resolveMerchantId(request);
