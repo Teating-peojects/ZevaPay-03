@@ -298,6 +298,8 @@ export interface CheckoutView {
   returnUrl: string | null;
   /** One receiving account per provider the merchant can accept. */
   providers: { provider: "BKASH" | "NAGAD"; accountNumber: string; label: string }[];
+  /** Links to reach the merchant. Each is null when the merchant has not set it. */
+  support: { whatsapp: string | null; telegram: string | null; facebook: string | null; instagram: string | null };
   /** A TrxID is in and the payment is waiting for its SMS. */
   awaitingSms: boolean;
   attemptsLeft: number;
@@ -345,4 +347,9 @@ export interface ApiSubscription {
 export interface ApiBilling {
   plans: ApiPlan[];
   subscription: ApiSubscription;
+}
+
+export interface ApiSupport {
+  support: { whatsapp: string | null; telegram: string | null; facebook: string | null; instagram: string | null };
+  links: { whatsapp: string | null; telegram: string | null; facebook: string | null; instagram: string | null };
 }

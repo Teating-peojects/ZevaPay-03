@@ -281,7 +281,7 @@ describe("submitTrxId", () => {
     await submitTrxId({ ...base, paymentId: first, trxId: "DK3508MJ4R" });
     await expect(
       submitTrxId({ ...base, paymentId: second, trxId: " dk3508mj4r " }),
-    ).rejects.toBeInstanceOf(ConflictError);
+    ).rejects.toMatchObject({ code: "TRXID_ALREADY_USED" });
   });
 
   it("refuses a TrxID whose SMS already settled another payment", async () => {
@@ -289,7 +289,7 @@ describe("submitTrxId", () => {
     store.transactions = [
       { id: "t0", merchantId: "m1", provider: "BKASH", providerRef: "DK3508MJ4R", paymentId: "someone-else", status: "CONFIRMED" },
     ];
-    await expect(submitTrxId({ ...base, paymentId, trxId: "DK3508MJ4R" })).rejects.toBeInstanceOf(ConflictError);
+    await expect(submitTrxId({ ...base, paymentId, trxId: "DK3508MJ4R" })).rejects.toMatchObject({ code: "TRXID_ALREADY_USED" });
   });
 
   it("stops after five attempts", async () => {
@@ -297,7 +297,7 @@ describe("submitTrxId", () => {
     for (const trxId of ["AAAA0001", "AAAA0002", "AAAA0003", "AAAA0004", "AAAA0005"]) {
       await submitTrxId({ ...base, paymentId, trxId });
     }
-    await expect(submitTrxId({ ...base, paymentId, trxId: "AAAA0006" })).rejects.toBeInstanceOf(ConflictError);
+    await expect(submitTrxId({ ...base, paymentId, trxId: "AAAA0006" })).rejects.toMatchObject({ code: "ATTEMPTS_EXHAUSTED" });
     expect(store.attempts).toHaveLength(5);
   });
 

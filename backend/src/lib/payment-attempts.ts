@@ -59,7 +59,7 @@ export async function submitTrxId(input: SubmitTrxIdInput): Promise<SubmitTrxIdR
     throw new ConflictError("This payment has expired.");
   }
   if (payment._count.attempts >= MAX_ATTEMPTS_PER_PAYMENT) {
-    throw new ConflictError("Too many TrxIDs have been tried for this payment.");
+    throw new ConflictError("Too many TrxIDs have been tried for this payment.", undefined, "ATTEMPTS_EXHAUSTED");
   }
 
   if (input.requireActiveAccount) {
@@ -95,7 +95,7 @@ export async function submitTrxId(input: SubmitTrxIdInput): Promise<SubmitTrxIdR
     }),
   ]);
   if (alreadySubmitted || alreadyUsed) {
-    throw new ConflictError("That TrxID has already been used for a payment.");
+    throw new ConflictError("That TrxID has already been used for a payment.", undefined, "TRXID_ALREADY_USED");
   }
 
   const attempt = await prisma.$transaction(async (tx) => {

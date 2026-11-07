@@ -1,3 +1,4 @@
+import { SUPPORT_CHANNELS, parseSupport, supportHandles, supportLinks } from "../lib/support-contacts.js";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { prisma } from "../db.js";
@@ -1043,6 +1044,42 @@ export async function registerMerchantRoutes(app: FastifyInstance): Promise<void
       });
     },
   );
+
+  // ---------------------------------------------------------------------
+  // GET / PUT /api/v1/merchant/support
+  // How customers reach this merchant. Shown on the checkout page.
+  // ---------------------------------------------------------------------
+  app.get("/api/v1/merchant/support", requireMerchant, async (request, reply) => {
+    const merchantId = await app.resolveMerchantId(request);
+    const merchant = await prisma.merchant.findUnique({ where: { id: merchantId } });
+    if (!merchant) throw new NotFoundError("That merchant could not be found.");
+    return reply.send({ support: supportHandles(merchant), links: supportLinks(merchant) });
+  });
+
+  app.put("/api/v1/merchant/support", requireWrite, async (request, reply) => {
+    const merchantId = await app.resolveMerchantId(request);
+    const body = z
+      .object({
+        whatsapp: z.string().max(200).nullish(),
+        telegram: z.string().max(200).nullish(),
+        facebook: z.string().max(200).nullish(),
+        instagram: z.string().max(200).nullish(),
+      })
+      .parse(request.body);
+
+    // Only the channels that were sent change. An empty value clears one.
+    const data: Record<string, string | null> = {};
+    for (const channel of SUPPORT_CHANNELS) {
+      const raw = body[channel];
+      if (raw === undefined) continue;
+      const parsed = parseSupport(channel, raw);
+      if (!parsed.ok) throw new BadRequestError(parsed.reason);
+      data[`support${channel[0]!.toUpperCase()}${channel.slice(1)}`] = parsed.value;
+    }
+
+    const merchant = await prisma.merchant.update({ where: { id: merchantId }, data });
+    return reply.send({ support: supportHandles(merchant), links: supportLinks(merchant) });
+  });
 
   // ---------------------------------------------------------------------
   // GET /api/v1/merchant/transactions/export

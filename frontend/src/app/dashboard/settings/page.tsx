@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/toast";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { merchantProfileSchema, type MerchantProfileValues } from "@/lib/schemas";
 import type { ApiMerchant, ApiUser } from "@/types/api";
+import { SupportCard } from "./support-card";
 
 export default function SettingsPage() {
   const { toast } = useToast();
@@ -116,6 +117,8 @@ export default function SettingsPage() {
           </form>
         </CardContent>
       </Card>
+
+      <SupportCard />
     </div>
   );
 }

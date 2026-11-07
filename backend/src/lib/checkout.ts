@@ -1,3 +1,4 @@
+import { supportLinks, type StoredSupport, type SupportLinks } from "./support-contacts.js";
 import { config } from "../config.js";
 import { prisma } from "../db.js";
 import { recordAudit } from "./audit.js";
@@ -135,7 +136,7 @@ export interface CheckoutRecord {
     businessName: string;
     status: string;
     paymentAccounts: { provider: string; accountNumber: string; label: string; status: string; createdAt: Date }[];
-  };
+  } & StoredSupport;
   _count: { attempts: number };
 }
 
@@ -152,6 +153,8 @@ export interface CheckoutView {
   /** Where "Back to the shop" goes. Null when the merchant gave none. */
   returnUrl: string | null;
   /** One receiving account per provider the merchant can accept. */
+  /** Links to reach the merchant. Each is null when the merchant has not set it. */
+  support: SupportLinks;
   providers: { provider: CheckoutProvider; accountNumber: string; label: string }[];
   /** A TrxID is in and the payment is waiting for its SMS. */
   awaitingSms: boolean;
@@ -211,6 +214,7 @@ export function buildCheckoutView(record: CheckoutRecord, now: Date = new Date()
     expiresAt: record.expiresAt ? record.expiresAt.toISOString() : null,
     returnUrl,
     providers,
+    support: supportLinks(record.merchant),
     awaitingSms: record.status === "PENDING" && record._count.attempts > 0,
     attemptsLeft,
     canSubmit: open && !expired && providers.length > 0 && attemptsLeft > 0,
@@ -236,6 +240,10 @@ export async function loadCheckout(token: string): Promise<CheckoutRecord | null
         select: {
           businessName: true,
           status: true,
+          supportWhatsapp: true,
+          supportTelegram: true,
+          supportFacebook: true,
+          supportInstagram: true,
           paymentAccounts: {
             where: { status: "ACTIVE" },
             select: { provider: true, accountNumber: true, label: true, status: true, createdAt: true },

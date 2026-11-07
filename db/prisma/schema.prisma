@@ -173,6 +173,14 @@ model Merchant {
   registrationDate DateTime      @default(now())
   lastActiveAt   DateTime       @default(now())
 
+  /// Where this merchant's customers can reach them. Stored as a clean handle
+  /// (a phone number with country code, or a username), never as a URL: the
+  /// link is built from the handle, so it can only point at the named service.
+  supportWhatsapp  String?
+  supportTelegram  String?
+  supportFacebook  String?
+  supportInstagram String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -237,6 +237,16 @@ checkout page. See [checkout-integration.md](./checkout-integration.md).
 | GET | `/public/checkout/:token` | link secret | What the customer's page shows |
 | POST | `/public/checkout/:token/trxid` | link secret | The customer's TrxID |
 
+### Support contacts
+
+A merchant can show how customers reach them (WhatsApp, Telegram, a Facebook page, Instagram). The checkout page offers these when a customer is stuck: after two TrxIDs that did not work, when a TrxID was already used, when five tries are used up, and when a payment is in review, expired or closed.
+
+- `GET /api/v1/merchant/support` returns `{ support, links }`: the stored handles and the ready links.
+- `PUT /api/v1/merchant/support` takes `{ whatsapp?, telegram?, facebook?, instagram? }`. Only the fields sent change; an empty string removes one. Accepted forms: a Bangladeshi number (`01712345678` is stored as `8801712345678`) or an international one; a username, `@username`, or the service's own link.
+- A handle is stored, never a URL. Links are built by the server to `wa.me`, `t.me`, `facebook.com` and `instagram.com` only, so a merchant cannot put any other address on the page.
+- The public checkout view carries these links as `support`. They are contact details the merchant chose to publish.
+- A TrxID that was already used is answered with `409` and code `TRXID_ALREADY_USED`; too many tries with `409` `ATTEMPTS_EXHAUSTED`.
+
 ### Plans
 
 Prices are per month, in paisa, and the whole period is paid up front.

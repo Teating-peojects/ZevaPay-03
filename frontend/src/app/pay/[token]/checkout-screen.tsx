@@ -7,11 +7,13 @@ import { ProviderLogo } from "@/components/shared/provider-logo";
 import { Alert } from "@/components/ui/alert";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
+import { Modal } from "@/components/ui/modal";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { formatBDT } from "@/lib/format";
 import { cleanTrxId, TRXID_HELP } from "@/lib/trxid";
 import { cn } from "@/lib/utils";
 import type { CheckoutView } from "@/types/api";
+import { SupportLinks } from "./support-links";
 
 const POLL_MS = 4000;
 const PROVIDER_NAME = { BKASH: "bKash", NAGAD: "Nagad" } as const;
@@ -169,6 +171,7 @@ function Checkout({
           not need to pay again. If you have not heard back soon, contact them and quote the
           reference above.
         </Alert>
+        <SupportLinks support={view.support} merchantName={view.merchantName} />
         <BackLink view={view} />
       </div>
     );
@@ -179,6 +182,7 @@ function Checkout({
           Ask {view.merchantName} for a new payment link. If you have already sent money, contact
           them and quote the reference above.
         </Alert>
+        <SupportLinks support={view.support} merchantName={view.merchantName} />
         <BackLink view={view} />
       </div>
     );
@@ -189,6 +193,7 @@ function Checkout({
           Ask {view.merchantName} for a new payment link. If you have already sent money, contact
           them and quote the reference above.
         </Alert>
+        <SupportLinks support={view.support} merchantName={view.merchantName} />
         <BackLink view={view} />
       </div>
     );
@@ -214,9 +219,12 @@ function Checkout({
     );
   } else if (view.attemptsLeft === 0) {
     body = (
-      <Alert tone="warning" title="Too many TrxIDs were tried">
-        Contact {view.merchantName} and quote the reference above.
-      </Alert>
+      <div className="flex flex-col gap-4">
+        <Alert tone="warning" title="Too many TrxIDs were tried">
+          Contact {view.merchantName} and quote the reference above.
+        </Alert>
+        <SupportLinks support={view.support} merchantName={view.merchantName} />
+      </div>
     );
   } else {
     body = <PayForm view={view} token={token} onView={onView} />;
@@ -250,6 +258,11 @@ function PayForm({
   const [trxId, setTrxId] = React.useState("");
   const [error, setError] = React.useState<string | undefined>();
   const [busy, setBusy] = React.useState(false);
+  const [usedOpen, setUsedOpen] = React.useState(false);
+  const [failures, setFailures] = React.useState(0);
+
+  // After two TrxIDs that did not work, point the customer to the merchant.
+  const needsHelp = failures >= 2 || view.attemptsLeft <= 3;
 
   const account = view.providers.find((item) => item.provider === provider) ?? view.providers[0];
   const name = PROVIDER_NAME[account.provider];
@@ -270,6 +283,8 @@ function PayForm({
       );
       if (response.data.checkout) onView(response.data.checkout);
     } catch (caught) {
+      setFailures((count) => count + 1);
+      if (caught instanceof ApiError && caught.code === "TRXID_ALREADY_USED") setUsedOpen(true);
       setError(
         caught instanceof ApiError
           ? caught.status === 429
@@ -361,6 +376,29 @@ function PayForm({
           </div>
         </li>
       </ol>
+
+      {needsHelp ? <SupportLinks support={view.support} merchantName={view.merchantName} /> : null}
+
+      <Modal
+        open={usedOpen}
+        onClose={() => setUsedOpen(false)}
+        title="This TrxID has already been used"
+        description="A payment has already been recorded with this TrxID."
+        size="sm"
+        footer={
+          <Button type="button" onClick={() => setUsedOpen(false)}>
+            Try another TrxID
+          </Button>
+        }
+      >
+        <div className="flex flex-col gap-4 text-sm text-ink-soft">
+          <p>
+            Check that you copied the TrxID from the confirmation message of the payment you just
+            made. Each TrxID can be used only once.
+          </p>
+          <SupportLinks support={view.support} merchantName={view.merchantName} />
+        </div>
+      </Modal>
 
       <div className="flex flex-col gap-2">
         <Button type="submit" size="lg" loading={busy} className="w-full">
