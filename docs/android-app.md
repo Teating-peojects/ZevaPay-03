@@ -3,6 +3,11 @@
 This is the contract for the phone app. It does not exist yet. The server side
 it talks to is finished and tested (`docs/api.md`, "Device ingest").
 
+> **Status:** a first version of this app is in `android/`. It was written without
+> being compiled or run (the build environment had no Android SDK), so build
+> it in Android Studio and test on a phone before relying on it. See
+> `android/README.md`.
+
 ## What the app is for
 
 A merchant installs it on the phone that receives their bKash or Nagad
@@ -33,14 +38,15 @@ the app decided, a modified app could approve anything.
    | Rocket | `16216` (a number, not a name) |
    | Upay | `upay` |
 
-   Match the sender exactly (ignoring case), not "contains". Keep the list
-   editable in settings, because a provider can change its sender.
+   Match the sender exactly (ignoring case), not "contains". The list is fixed in
+   the code in version 1 (`Senders.kt`); change it there if a provider changes
+   its sender.
 4. **Queue.** Write the message to a local database first (Room), with the
    time it arrived. Never send straight from the receiver.
 5. **Send.** A background job (WorkManager) posts queued messages in order to
    `POST /api/v1/device/notifications` with `Authorization: Bearer <token>`:
    `{ "message": "<exact SMS text>", "receivedAt": "<ISO time>", "provider": "BKASH" }`.
-6. **Heartbeat.** `POST /api/v1/device/heartbeat` about every 5 minutes, so the
+6. **Heartbeat.** `POST /api/v1/device/heartbeat` about every 15 minutes (the fastest Android allows for background work), so the
    dashboard shows the phone online.
 
 ## Handling replies

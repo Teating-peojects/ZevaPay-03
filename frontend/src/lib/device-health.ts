@@ -6,10 +6,11 @@ import type { ApiDevice } from "@/types/api";
  * The API marks a device ONLINE on every heartbeat but never marks it OFFLINE
  * when heartbeats stop, so the stored status alone can read "Online" for a
  * phone that died days ago. The console therefore also looks at the last
- * sync time. The heartbeat interval is not documented, so this threshold is a
- * conservative console assumption, not a server rule.
+ * sync time. The Android app checks in about every 15 minutes (Android allows nothing
+ * faster for background work), so 30 minutes means two missed check-ins. It is
+ * a console assumption, not a server rule.
  */
-export const SILENT_AFTER_MS = 15 * 60 * 1000;
+export const SILENT_AFTER_MS = 30 * 60 * 1000;
 
 export type DeviceHealthState = "online" | "silent" | "offline" | "pending";
 
