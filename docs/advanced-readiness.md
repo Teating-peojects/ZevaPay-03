@@ -37,7 +37,6 @@ reads or writes it.
   review dialog. The stored value then no longer reflects parser confidence.
 - The overview "recorded amount" sums all statuses. A confirmed-only revenue
   figure needs a backend change.
-- Devices share one `x-device-secret`; per-device tokens would be safer.
 
 ## Suggested order
 

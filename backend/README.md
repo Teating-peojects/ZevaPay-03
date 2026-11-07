@@ -40,7 +40,6 @@ See `.env.example` for the full list. The values that matter most:
 | `JWT_SECRET`             | **required in production** |
 | `JWT_ACCESS_TTL`         | `15m`                      |
 | `JWT_REFRESH_TTL`        | `30d`                      |
-| `DEVICE_INGEST_SECRET`   | `dev-device-ingest-secret` |
 | `AUTO_ACCEPT_CONFIDENCE` | `0.9`                      |
 
 The environment is validated at boot by a Zod schema. A misconfigured

@@ -7,8 +7,7 @@ importantly — what it does not.
 
 ## The security model in one paragraph
 
-A signed-in person holds a session cookie; a device holds a shared ingest
-secret; a platform administrator holds a role that the API re-checks on every
+A signed-in person holds a session cookie; a device holds its own token; a platform administrator holds a role that the API re-checks on every
 request. Merchant data is isolated by tenant at the query level, not by
 convention. Tokens never reach browser storage. Sensitive actions are written
 to an append-only audit log.
@@ -82,18 +81,27 @@ audit log records it.
 
 ## Device ingest
 
-A device is not a user. It authenticates with a **shared ingest secret**
-(`DEVICE_INGEST_SECRET`) plus its own device identifier, and it can only ever
-act on the merchant it is paired with.
+A device is not a user. When it pairs, it receives its **own token**
+(`zpd_…`, shown once; only its SHA-256 is stored) and sends it as
+`Authorization: Bearer` on every later call. The token identifies the device,
+and the device can only ever act on the merchant it is paired with. A
+`deviceId` in a request body is only checked against the token, never used to
+look a device up.
 
-- The pairing code is **single-use** and expires after **15 minutes**.
+- The pairing code is **single-use**, expires after **15 minutes**, is made
+  from a cryptographic random source, and is claimed atomically, so two
+  devices cannot both use it.
 - A device already paired to a different merchant cannot be re-paired.
-- The device endpoints are rate limited separately from the user endpoints
-  (30 pairings/minute, 600 notifications/minute).
+  Pairing a device of your own again issues a new token and the old one stops
+  working. Removing a device in the dashboard ends its token at once.
+- The pairing code is the only credential on the pairing call, so that call is
+  limited to 10 per minute per address. Notifications are limited to 600 per
+  minute.
 
-The shared secret is a deliberate simplification for a single-tenant device
-fleet. A production fleet would give each device its own credential; the
-call sites would not change.
+This matters because a payment is confirmed from a notification: if anyone
+could post notifications for someone else's device, they could confirm a
+payment they never made. There is no longer a secret shared by all devices,
+and nothing secret is built into the app.
 
 ---
 
@@ -178,8 +186,9 @@ credentialed path never crosses an origin boundary at all.
 
 Being honest about the edges:
 
-- **The device secret is shared.** Anyone who holds it can post notifications
-  for any device identifier. A per-device credential would be the fix.
+- **A stolen phone holds a working token** until the device is removed in the
+  dashboard. Notifications from it are still only evidence: they confirm a
+  payment only if a customer gave the same TrxID and amount.
 - **The event hub is in-process.** Live events do not survive a restart and
   are not shared between API instances. Redis pub/sub would fix it.
 - **There is no email transport.** Password reset tokens are stored hashed and

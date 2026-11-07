@@ -227,6 +227,9 @@ model Device {
   name         String
   /// Human-readable device identifier shown in the dashboard.
   deviceId     String       @unique
+  /// SHA-256 of the device's own token, issued once when it pairs. A device
+  /// without one (paired before tokens existed) must pair again.
+  tokenHash    String?      @unique
   status       DeviceStatus @default(PENDING)
   androidVersion String?
   lastActiveAt DateTime     @default(now())

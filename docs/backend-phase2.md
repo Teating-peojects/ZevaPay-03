@@ -14,7 +14,7 @@ The forward migration maps old platform/operator roles to `SUPER_ADMIN` / `MERCH
 
 ## Environment
 
-Copy `backend/.env.example` to `backend/.env`; copy `db/.env.example` to `db/.env` if Prisma CLI does not inherit the backend environment. Configure `DATABASE_URL` to a local PostgreSQL database. `JWT_SECRET` and `DEVICE_INGEST_SECRET` have development-only defaults; both are required and must be strong values in production. Never reuse the sample secrets in a deployed environment.
+Copy `backend/.env.example` to `backend/.env`; copy `db/.env.example` to `db/.env` if Prisma CLI does not inherit the backend environment. Configure `DATABASE_URL` to a local PostgreSQL database. `JWT_SECRET` has a development-only default; it is required and must be a strong value in production. (`DEVICE_INGEST_SECRET` no longer exists: each device has its own token.) Never reuse the sample secrets in a deployed environment.
 
 ## Database commands
 

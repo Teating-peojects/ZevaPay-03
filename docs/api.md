@@ -318,8 +318,12 @@ These are real counts from the database.
 
 ## Device ingest — `/api/v1/device`
 
-These endpoints are for the Android device, not for a signed-in user. They
-authenticate with the `x-device-secret` header and are rate limited separately.
+These endpoints are for the Android device, not for a signed-in user.
+`/device/pair` takes only a single-use pairing code. The other calls take the
+device's own token, issued by `/device/pair`, as `Authorization: Bearer zpd_…`.
+A request with a missing or wrong token gets `401 UNAUTHORIZED_DEVICE`, and so
+does a body whose `deviceId` is not the token's device. Rate limits: 10
+pairings, 600 notifications and 120 heartbeats per minute.
 
 | Method | Path                    | Description                                  |
 | ------ | ----------------------- | -------------------------------------------- |
@@ -339,20 +343,28 @@ authenticate with the `x-device-secret` header and are rate limited separately.
 ```
 
 The code must be unused and unexpired. A device that is already paired to a
-different merchant is refused.
+different merchant is refused. The reply carries the device's token, **once**:
+
+```json
+{ "device": { "id": "…", "name": "Counter Terminal 1", "deviceId": "ZP-SMS-8F2A41", "merchantId": "…", "status": "ONLINE" },
+  "deviceToken": "zpd_…" }
+```
+
+Store it in the app's private storage. Pairing the same device again gives a
+new token and the old one stops working.
 
 **`POST /device/notifications`**
 
 ```json
 {
-  "deviceId": "ZP-SMS-8F2A41",
   "message": "bKash: You have received Tk 2,450.00 from Rakib Chowdhury. TrxID: 8H2K4L9M. Ref: BKSEND01.",
   "receivedAt": "2026-11-02T14:02:00.000Z",
   "provider": "BKASH"
 }
 ```
 
-The response says what the parser made of it:
+`deviceId` may be sent too, and must then be the token's own device. The
+response says what the parser made of it:
 
 ```json
 {

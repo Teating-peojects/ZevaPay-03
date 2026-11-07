@@ -30,7 +30,6 @@ export async function buildApp(): Promise<FastifyInstance> {
         paths: [
           "req.headers.authorization",
           "req.headers.cookie",
-          "req.headers['x-device-secret']",
           "res.headers['set-cookie']",
         ],
         censor: "[redacted]",

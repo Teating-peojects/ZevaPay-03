@@ -30,7 +30,6 @@ const envSchema = z.object({
   CORS_ORIGINS: z.string().default("http://localhost:3000"),
 
   /** Shared secret the Android device uses when posting notifications. */
-  DEVICE_INGEST_SECRET: z.string().min(32, "DEVICE_INGEST_SECRET must be at least 32 characters").optional(),
 
   /** Parser confidence threshold for routing unverified notifications. */
   AUTO_ACCEPT_CONFIDENCE: z.coerce.number().min(0).max(1).default(0.9),
@@ -41,9 +40,6 @@ const envSchema = z.object({
 }).superRefine((value, context) => {
   if (value.NODE_ENV === "production" && !value.JWT_SECRET) {
     context.addIssue({ code: "custom", path: ["JWT_SECRET"], message: "JWT_SECRET is required in production" });
-  }
-  if (value.NODE_ENV === "production" && !value.DEVICE_INGEST_SECRET) {
-    context.addIssue({ code: "custom", path: ["DEVICE_INGEST_SECRET"], message: "DEVICE_INGEST_SECRET is required in production" });
   }
 });
 
@@ -77,7 +73,6 @@ export const config = {
   corsOrigins: env.CORS_ORIGINS.split(",")
     .map((origin) => origin.trim())
     .filter(Boolean),
-  deviceIngestSecret: env.DEVICE_INGEST_SECRET ?? "dev-device-ingest-secret-change-me",
   autoAcceptConfidence: env.AUTO_ACCEPT_CONFIDENCE,
   logLevel: env.LOG_LEVEL,
 } as const;

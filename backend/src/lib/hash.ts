@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomInt } from "node:crypto";
 
 /** SHA-256 hex digest — used for token and API-key lookups. */
 export function sha256(value: string): string {
@@ -19,8 +19,7 @@ const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export function generatePairingCode(): string {
   const pick = (length: number) =>
     Array.from({ length }, () => {
-      const index = Math.floor(Math.random() * CODE_ALPHABET.length);
-      return CODE_ALPHABET[index];
+      return CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
     }).join("");
 
   return `ZP-${pick(4)}-${pick(2)}`;
@@ -48,4 +47,17 @@ export function generateApiKeySecret(): string {
 /** Whether a value has the shape of an API key. Says nothing about validity. */
 export function looksLikeApiKey(value: string): boolean {
   return /^zp_live_[A-Za-z0-9_-]{32}$/.test(value);
+}
+
+/**
+ * A device's own credential, issued once when it pairs. The prefix lets a
+ * leaked token be recognised; only its SHA-256 is stored.
+ */
+export function generateDeviceToken(): string {
+  return `zpd_${randomBytes(24).toString("base64url")}`;
+}
+
+/** Whether a value has the shape of a device token. Says nothing about validity. */
+export function looksLikeDeviceToken(value: string): boolean {
+  return /^zpd_[A-Za-z0-9_-]{32}$/.test(value);
 }

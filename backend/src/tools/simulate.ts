@@ -19,8 +19,8 @@ import { SAMPLE_NOTIFICATIONS } from "../parser/samples.js";
  *                      --device ZP-SMS-SIM01 --count 10
  */
 const API_BASE = process.env.API_BASE_URL ?? "http://localhost:4000";
-const DEVICE_SECRET =
-  process.env.DEVICE_INGEST_SECRET ?? "dev-device-ingest-secret";
+/** The device's own token, received when it pairs. */
+let deviceToken: string | null = null;
 
 interface Args {
   email: string;
@@ -117,7 +117,7 @@ async function request(
     const cookies = cookieHeader();
     if (cookies) headers.cookie = cookies;
   } else {
-    headers["x-device-secret"] = DEVICE_SECRET;
+    if (deviceToken) headers.authorization = `Bearer ${deviceToken}`;
   }
 
   const response = await fetch(`${API_BASE}${path}`, {
@@ -196,6 +196,7 @@ async function main() {
     console.error("Pairing failed:", pair.payload);
     process.exit(1);
   }
+  deviceToken = pair.payload.deviceToken;
   console.log(`Paired: ${pair.payload.device.name} (${pair.payload.device.deviceId})\n`);
 
   // 4. Post notifications.

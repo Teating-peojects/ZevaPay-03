@@ -3,19 +3,16 @@ import { z } from "zod";
 import { config } from "../config.js";
 import { prisma } from "../db.js";
 import { channels, eventHub } from "../lib/events.js";
-import {
-  BadRequestError,
-  UnauthorizedDeviceError,
-  NotFoundError,
-} from "../lib/errors.js";
+import { authenticateDevice } from "../lib/device-auth.js";
+import { pairDevice } from "../lib/device-pairing.js";
 import { generateTransactionReference } from "../lib/hash.js";
 import { parseNotification } from "../parser/index.js";
 import { settleFromTransaction, type SettleResult } from "../lib/payment-matching.js";
 import { serializeTransaction } from "../lib/serializers.js";
 
 const notificationSchema = z.object({
-  /** The device's identifier, e.g. `ZP-SMS-8F2A41`. */
-  deviceId: z.string().trim().min(3, "A device identifier is required"),
+  /** Optional. If sent, it must be the device the token belongs to. */
+  deviceId: z.string().trim().min(3).optional(),
   /** The raw SMS body exactly as received. */
   message: z.string().trim().min(1, "A message body is required"),
   /** Optional timestamp supplied by the device. */
@@ -34,20 +31,9 @@ const pairingSchema = z.object({
 });
 
 export async function registerDeviceRoutes(app: FastifyInstance): Promise<void> {
-  /**
-   * Devices authenticate with a shared ingest secret plus their own device
-   * identifier. This is deliberately separate from user JWTs — a phone on
-   * the counter should never hold a human's session.
-   */
-  const requireDeviceSecret = async (request: { headers: Record<string, unknown> }) => {
-    const provided = request.headers["x-device-secret"];
-    if (
-      typeof provided !== "string" ||
-      provided !== config.deviceIngestSecret
-    ) {
-      throw new UnauthorizedDeviceError();
-    }
-  };
+  // A device is not a user. After pairing it holds its own token and sends it
+  // as `Authorization: Bearer zpd_…`. The token identifies the device; a
+  // `deviceId` in the body is only checked against it.
 
   // ---------------------------------------------------------------------
   // POST /api/v1/device/pair
@@ -55,67 +41,15 @@ export async function registerDeviceRoutes(app: FastifyInstance): Promise<void> 
   app.post(
     "/api/v1/device/pair",
     {
-      config: { rateLimit: { max: 30, timeWindow: "1 minute" } },
+      // The pairing code is the only credential here, so keep guesses scarce.
+      config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
     },
     async (request, reply) => {
-      await requireDeviceSecret(request as never);
       const body = pairingSchema.parse(request.body);
-
-      const pairing = await prisma.pairingCode.findUnique({
-        where: { code: body.code.toUpperCase() },
-      });
-
-      if (!pairing) {
-        throw new NotFoundError("That pairing code is not recognised.");
-      }
-      if (pairing.usedAt) {
-        throw new BadRequestError("That pairing code has already been used.");
-      }
-      if (pairing.expiresAt.getTime() < Date.now()) {
-        throw new BadRequestError("That pairing code has expired.");
-      }
-
-      const existing = await prisma.device.findUnique({
-        where: { deviceId: body.deviceId },
-        select: { id: true, merchantId: true, name: true },
-      });
-
-      if (existing && existing.merchantId !== pairing.merchantId) {
-        throw new BadRequestError(
-          "That device is already paired with another merchant.",
-        );
-      }
-
-      const device = existing
-        ? await prisma.device.update({
-            where: { id: existing.id },
-            data: {
-              status: "ONLINE",
-              lastActiveAt: new Date(),
-              androidVersion: body.androidVersion,
-              name: body.deviceName ?? existing.name,
-              connectedAccountId: pairing.connectedAccountId,
-            },
-          })
-        : await prisma.device.create({
-            data: {
-              merchantId: pairing.merchantId,
-              name: body.deviceName ?? body.deviceId,
-              deviceId: body.deviceId,
-              status: "ONLINE",
-              androidVersion: body.androidVersion,
-              connectedAccountId: pairing.connectedAccountId,
-              lastActiveAt: new Date(),
-            },
-          });
-
-      await prisma.pairingCode.update({
-        where: { id: pairing.id },
-        data: { usedAt: new Date(), deviceId: device.id },
-      });
+      const { device, token } = await pairDevice(body);
 
       eventHub.publish(
-        channels.merchant(pairing.merchantId),
+        channels.merchant(device.merchantId),
         "device.paired",
         { id: device.id, deviceId: device.deviceId, name: device.name },
       );
@@ -128,6 +62,8 @@ export async function registerDeviceRoutes(app: FastifyInstance): Promise<void> 
           merchantId: device.merchantId,
           status: device.status,
         },
+        // Shown once. The device keeps it and sends it on every later call.
+        deviceToken: token,
       });
     },
   );
@@ -141,19 +77,8 @@ export async function registerDeviceRoutes(app: FastifyInstance): Promise<void> 
       config: { rateLimit: { max: 600, timeWindow: "1 minute" } },
     },
     async (request, reply) => {
-      await requireDeviceSecret(request as never);
       const body = notificationSchema.parse(request.body);
-
-      const device = await prisma.device.findUnique({
-        where: { deviceId: body.deviceId },
-        include: { connectedAccount: true },
-      });
-
-      if (!device) {
-        throw new NotFoundError(
-          "That device is not paired. Pair it before posting notifications.",
-        );
-      }
+      const device = await authenticateDevice(request.headers, body.deviceId);
 
       await prisma.device.update({
         where: { id: device.id },
@@ -276,16 +201,10 @@ export async function registerDeviceRoutes(app: FastifyInstance): Promise<void> 
     "/api/v1/device/heartbeat",
     { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } },
     async (request, reply) => {
-      await requireDeviceSecret(request as never);
       const body = z
-        .object({ deviceId: z.string().trim().min(3) })
-        .parse(request.body);
-
-      const device = await prisma.device.findUnique({
-        where: { deviceId: body.deviceId },
-        select: { id: true },
-      });
-      if (!device) throw new NotFoundError("That device is not paired.");
+        .object({ deviceId: z.string().trim().min(3).optional() })
+        .parse(request.body ?? {});
+      const device = await authenticateDevice(request.headers, body.deviceId);
 
       await prisma.device.update({
         where: { id: device.id },

@@ -22,6 +22,8 @@ export const store = {
   audits: [] as Row[],
   webhookEndpoints: [] as Row[],
   webhookDeliveries: [] as Row[],
+  devices: [] as Row[],
+  pairingCodes: [] as Row[],
 };
 
 type Relation = { table: keyof typeof store; fk: string; many: boolean; local?: string };
@@ -34,6 +36,7 @@ const relations: Record<string, Record<string, Relation>> = {
   },
   attempts: { payment: { table: "payments", fk: "paymentId", many: false } },
   apiKeys: { merchant: { table: "merchants", fk: "merchantId", many: false } },
+  devices: { connectedAccount: { table: "accounts", fk: "connectedAccountId", many: false } },
   webhookDeliveries: { endpoint: { table: "webhookEndpoints", fk: "endpointId", many: false } },
   merchants: { paymentAccounts: { table: "accounts", fk: "merchantId", many: true, local: "id" } },
 };
@@ -160,6 +163,8 @@ export const prisma: Row = {
   apiKey: table("apiKeys"),
   merchant: table("merchants"),
   auditLog: table("audits"),
+  device: table("devices", () => ({ tokenHash: null, connectedAccountId: null })),
+  pairingCode: table("pairingCodes", () => ({ usedAt: null, deviceId: null })),
   webhookEndpoint: table("webhookEndpoints", () => ({ isActive: true, events: [], secret: null })),
   webhookDelivery: table("webhookDeliveries", () => ({ attempts: 0, responseCode: null, lastError: null, deliveredAt: null })),
   $transaction: async (callback: (tx: Row) => Promise<unknown>) => {
