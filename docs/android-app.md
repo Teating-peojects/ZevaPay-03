@@ -23,9 +23,18 @@ the app decided, a modified app could approve anything.
    encrypted storage (Android Keystore + EncryptedSharedPreferences).
 2. **Listen.** A manifest-declared `SMS_RECEIVED` receiver gets each incoming
    SMS. No always-on service is needed.
-3. **Filter.** Keep only messages from the provider's sender names (for example
-   `bKash`, `NAGAD`; make the list editable in settings, since senders vary).
-   Drop everything else on the phone. **Personal SMS never leave the device.**
+3. **Filter.** Keep only messages from these senders, and drop everything else
+   on the phone. **Personal SMS never leave the device.**
+
+   | Provider | Sender the SMS comes from |
+   | --- | --- |
+   | bKash | `bKash` |
+   | Nagad | `NAGAD` |
+   | Rocket | `16216` (a number, not a name) |
+   | Upay | `upay` |
+
+   Match the sender exactly (ignoring case), not "contains". Keep the list
+   editable in settings, because a provider can change its sender.
 4. **Queue.** Write the message to a local database first (Room), with the
    time it arrived. Never send straight from the receiver.
 5. **Send.** A background job (WorkManager) posts queued messages in order to
