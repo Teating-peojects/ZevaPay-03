@@ -6,6 +6,7 @@ import { Input, Label, Select } from "@/components/ui/form";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { formatBDT } from "@/lib/format";
+import { cleanTrxId, TRXID_HELP } from "@/lib/trxid";
 import type { ApiPayment } from "@/types/api";
 
 export interface TrxMatch {
@@ -22,12 +23,6 @@ const PROVIDERS = [
   { value: "BKASH", label: "bKash" },
   { value: "NAGAD", label: "Nagad" },
 ] as const;
-
-/** Mirrors the server's cleaning, so a mistake is caught before sending. */
-function cleanTrxId(raw: string): string | null {
-  const cleaned = raw.trim().replace(/\s+/g, "").toUpperCase();
-  return /^[A-Z0-9][A-Z0-9-]{3,29}$/.test(cleaned) ? cleaned : null;
-}
 
 /**
  * Records the TrxID a customer gave after paying, then asks the server to
@@ -51,7 +46,7 @@ export function TrxIdForm({
     event.preventDefault();
     const cleaned = cleanTrxId(trxId);
     if (!cleaned) {
-      setError("Enter the TrxID exactly as in the confirmation message: 4 to 30 letters or numbers.");
+      setError(TRXID_HELP);
       return;
     }
     setError(undefined);

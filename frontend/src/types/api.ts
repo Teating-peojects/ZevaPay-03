@@ -280,3 +280,25 @@ export interface ApiCustomer {
   updatedAt: string;
   payments?: ApiPayment[];
 }
+
+/** What the customer's checkout page may know about a payment. */
+export interface CheckoutView {
+  merchantName: string;
+  reference: string;
+  amountMinor: number;
+  currency: string;
+  description: string | null;
+  status: import("@/lib/payment-status").PaymentStatus;
+  /** True once the time has passed without the payment being settled. */
+  expired: boolean;
+  expiresAt: string | null;
+  /** Where "Back to the shop" goes. Null when the merchant gave none. */
+  returnUrl: string | null;
+  /** One receiving account per provider the merchant can accept. */
+  providers: { provider: "BKASH" | "NAGAD"; accountNumber: string; label: string }[];
+  /** A TrxID is in and the payment is waiting for its SMS. */
+  awaitingSms: boolean;
+  attemptsLeft: number;
+  /** Whether the customer can still type a TrxID. */
+  canSubmit: boolean;
+}
