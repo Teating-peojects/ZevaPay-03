@@ -24,6 +24,8 @@ export const store = {
   webhookDeliveries: [] as Row[],
   devices: [] as Row[],
   pairingCodes: [] as Row[],
+  plans: [] as Row[],
+  subscriptions: [] as Row[],
 };
 
 type Relation = { table: keyof typeof store; fk: string; many: boolean; local?: string };
@@ -36,6 +38,7 @@ const relations: Record<string, Record<string, Relation>> = {
   },
   attempts: { payment: { table: "payments", fk: "paymentId", many: false } },
   apiKeys: { merchant: { table: "merchants", fk: "merchantId", many: false } },
+  subscriptions: { plan: { table: "plans", fk: "planId", many: false } },
   devices: { connectedAccount: { table: "accounts", fk: "connectedAccountId", many: false } },
   webhookDeliveries: { endpoint: { table: "webhookEndpoints", fk: "endpointId", many: false } },
   merchants: { paymentAccounts: { table: "accounts", fk: "merchantId", many: true, local: "id" } },
@@ -129,10 +132,10 @@ function table(name: keyof typeof store, defaults: () => Row = () => ({})) {
       return found.slice(0, query.take ?? found.length).map((r) => shape(name, r, query));
     },
     count: async (query: Row = {}) => rows().filter((r) => matches(name, r, query.where)).length,
-    create: async ({ data }: Row) => {
+    create: async ({ data, include, select }: Row) => {
       const row = { id: `${name}_${++counter}`, createdAt: new Date(), ...defaults(), ...data };
       rows().push(row);
-      return { ...row };
+      return shape(name, row, { include, select });
     },
     update: async ({ where, data }: Row) => {
       const row = rows().find((r) => matches(name, r, where));
@@ -163,6 +166,14 @@ export const prisma: Row = {
   apiKey: table("apiKeys"),
   merchant: table("merchants"),
   auditLog: table("audits"),
+  plan: { ...table("plans", () => ({ isActive: true, limits: {} })), upsert: async ({ where, create, update }: Row) => {
+    const row = store.plans.find((r) => r.code === where.code);
+    if (row) { Object.assign(row, update); return { ...row }; }
+    const made = { id: `plans_${++counter}`, createdAt: new Date(), isActive: true, ...create };
+    store.plans.push(made);
+    return { ...made };
+  } },
+  subscription: table("subscriptions"),
   device: table("devices", () => ({ tokenHash: null, connectedAccountId: null })),
   pairingCode: table("pairingCodes", () => ({ usedAt: null, deviceId: null })),
   webhookEndpoint: table("webhookEndpoints", () => ({ isActive: true, events: [], secret: null })),

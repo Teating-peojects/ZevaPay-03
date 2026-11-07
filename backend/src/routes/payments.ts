@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../db.js";
+import { assertCanCreatePayments } from "../lib/subscriptions.js";
 import { ConflictError, NotFoundError } from "../lib/errors.js";
 import { generateTransactionReference } from "../lib/hash.js";
 import { recordAudit } from "../lib/audit.js";
@@ -40,6 +41,7 @@ export async function registerPaymentRoutes(app: FastifyInstance): Promise<void>
   app.post("/api/v1/merchant/payments", write, async (request, reply) => {
     const body = createSchema.parse(request.body);
     const merchantId = await app.resolveMerchantId(request);
+    await assertCanCreatePayments(merchantId);
     if (body.customerId) {
       const customer = await prisma.customer.findFirst({ where: { id: body.customerId, merchantId }, select: { id: true } });
       if (!customer) throw new NotFoundError("That customer could not be found.");

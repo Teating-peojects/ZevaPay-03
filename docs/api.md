@@ -237,6 +237,23 @@ checkout page. See [checkout-integration.md](./checkout-integration.md).
 | GET | `/public/checkout/:token` | link secret | What the customer's page shows |
 | POST | `/public/checkout/:token/trxid` | link secret | The customer's TrxID |
 
+### Plans
+
+Prices are per month, in paisa, and the whole period is paid up front.
+
+| Plan | Code | Per month | Pay once |
+| --- | --- | --- | --- |
+| Free trial (30 days) | `TRIAL` | ৳0 | ৳0 |
+| 1 month | `MONTHLY` | ৳100 | ৳100 |
+| 6 months | `SEMIANNUAL` | ৳70 | ৳420 |
+| 1 year | `ANNUAL` | ৳50 | ৳600 |
+
+- `GET /api/v1/merchant/billing` returns the plans and this merchant's `subscription` (`state`: `trial`, `active` or `expired`, plus `endsAt` and `daysLeft`).
+- `GET` and `POST /api/v1/admin/merchants/:id/subscription` (admin) read a merchant's plan, or activate one with `{ "planCode": "MONTHLY" }` after the merchant has paid. Time left on the current plan is kept: the new period starts when it ends.
+- The trial starts the first time a merchant is looked at, not at sign-up.
+- When a plan has ended, **creating** a payment (dashboard or `POST /api/v1/checkout/payments`) returns `403`. Nothing else stops: payments already created can still be paid, device notifications are still recorded, and the dashboard stays readable.
+- Merchants pay ZevaPay outside the system; an administrator activates the plan. There is no automatic charging.
+
 ### Webhooks
 
 Merchant session, same roles as API keys. At most 3 addresses per merchant.

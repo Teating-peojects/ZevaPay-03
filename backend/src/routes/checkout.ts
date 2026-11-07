@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { NotFoundError } from "../lib/errors.js";
+import { assertCanCreatePayments } from "../lib/subscriptions.js";
 import { buildCheckoutView, createCheckoutPayment, loadCheckout } from "../lib/checkout.js";
 import { submitTrxId } from "../lib/payment-attempts.js";
 import { CHECKOUT_PROVIDERS } from "../lib/payment-matching.js";
@@ -41,6 +42,7 @@ export async function registerCheckoutRoutes(app: FastifyInstance): Promise<void
     { ...keyed, config: { rateLimit: { max: 120, timeWindow: "1 minute" } } },
     async (request, reply) => {
       const body = createSchema.parse(request.body);
+      await assertCanCreatePayments(request.apiKey!.merchantId);
       const { payment, url } = await createCheckoutPayment({
         merchantId: request.apiKey!.merchantId,
         apiKeyId: request.apiKey!.id,

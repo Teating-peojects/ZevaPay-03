@@ -624,8 +624,9 @@ async function main() {
     await prisma.memberRole.create({ data: { memberId: member.id, roleId: roleRows.get(user.role)!.id } });
   }
 
-  for (const [code, name, monthlyPriceMinor] of [["FREE", "Free", 0], ["STARTER", "Starter", 0], ["GROWTH", "Growth", 99000], ["BUSINESS", "Business", 299000], ["ENTERPRISE", "Enterprise", 0]] as const) {
-    await prisma.plan.upsert({ where: { code }, create: { code, name, monthlyPriceMinor }, update: { name, monthlyPriceMinor } });
+  for (const [code, name, monthlyPriceMinor, months] of [["TRIAL", "Free trial", 0, 0], ["MONTHLY", "1 month", 10000, 1], ["SEMIANNUAL", "6 months", 7000, 6], ["ANNUAL", "1 year", 5000, 12]] as const) {
+    const limits = { months };
+    await prisma.plan.upsert({ where: { code }, create: { code, name, monthlyPriceMinor, limits }, update: { name, monthlyPriceMinor, limits, isActive: true } });
   }
 
   // --- payment accounts --------------------------------------------------

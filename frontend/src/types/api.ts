@@ -324,3 +324,25 @@ export interface ApiWebhookDelivery {
   deliveredAt: string | null;
   nextAttemptAt: string | null;
 }
+
+export interface ApiPlan {
+  code: string;
+  name: string;
+  months: number;
+  monthlyPriceMinor: number;
+  totalPriceMinor: number;
+  currency: string;
+}
+
+export interface ApiSubscription {
+  state: "trial" | "active" | "expired";
+  planCode: string;
+  planName: string;
+  endsAt: string;
+  daysLeft: number;
+}
+
+export interface ApiBilling {
+  plans: ApiPlan[];
+  subscription: ApiSubscription;
+}

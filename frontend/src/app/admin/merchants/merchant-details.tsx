@@ -3,6 +3,7 @@
 import { Modal } from "@/components/ui/modal";
 import { MerchantStatusBadge } from "@/components/shared/status-badge";
 import { formatDate, formatDateTime } from "@/lib/format";
+import { MerchantPlan } from "./merchant-plan";
 import type { ApiMerchant } from "@/types/api";
 
 function DetailRow({
@@ -73,6 +74,8 @@ export function MerchantDetails({
               {formatDateTime(merchant.lastActiveAt)}
             </DetailRow>
           </div>
+
+          <MerchantPlan key={merchant.id} merchantId={merchant.id} />
         </div>
       ) : null}
     </Modal>
