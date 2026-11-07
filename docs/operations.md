@@ -35,7 +35,10 @@ npm --prefix db run seed       # load the demo data
 npm --prefix db run studio     # browse the data in a GUI
 ```
 
-`migrate` creates the tables. `seed` fills them with four merchants, eight
+`migrate` creates the tables and then generates the Prisma client, which the
+seed and the API both import (it is git-ignored, so a fresh clone does not have
+it). If you ever need only the client, run `npm --prefix db run generate`.
+`seed` fills them with four merchants, eight
 users, payment accounts, devices, transactions and audit entries. The seed is
 idempotent — it wipes and recreates the demo records, so it can be re-run.
 

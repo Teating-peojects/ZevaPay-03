@@ -35,7 +35,10 @@ Browser ──► Next.js (frontend, :3000) ──► Fastify API (backend, :400
 ## Prerequisites
 
 - **Node.js 20+**
-- **Docker** (for the PostgreSQL container)
+- **Docker** (for the PostgreSQL container), **or** an existing PostgreSQL 16+
+  server. Without Docker, skip `npm run setup`: copy the `.env.example` files,
+  set `DATABASE_URL` in `db/.env` and `backend/.env` to your server, then run
+  `npm --prefix db run migrate` and `npm --prefix db run seed`.
 
 ## Quick start
 
@@ -55,8 +58,8 @@ npm run dev
 
 Open <http://localhost:3000>.
 
-`npm run setup` runs `docker compose up -d`, applies the migrations and seeds
-the database. `npm run dev` starts the API on `:4000` and the front end on
+`npm run setup` runs `docker compose up -d`, applies the migrations (which also
+generates the Prisma client) and seeds the database. `npm run dev` starts the API on `:4000` and the front end on
 `:3000` side by side.
 
 ### Seeded accounts

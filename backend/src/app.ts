@@ -25,7 +25,6 @@ export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
       level: config.logLevel,
-      transport: config.env === "development" ? undefined : undefined,
       redact: {
         paths: [
           "req.headers.authorization",
