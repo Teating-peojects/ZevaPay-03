@@ -85,6 +85,8 @@ export interface ApiDevice {
   connectedAccountId: string | null;
   connectedAccountLabel: string | null;
   androidVersion: string | null;
+  /** No token yet: paired before tokens existed, so it must pair again. */
+  needsPairing?: boolean;
   /** Only returned by the admin device list. */
   merchantName?: string | null;
 }

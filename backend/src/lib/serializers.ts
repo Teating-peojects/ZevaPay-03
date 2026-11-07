@@ -90,6 +90,8 @@ export interface DeviceDto {
   connectedAccountId: string | null;
   connectedAccountLabel: string | null;
   androidVersion: string | null;
+  /** True when the device has no token, so it cannot send until it pairs again. */
+  needsPairing: boolean;
 }
 
 export function serializeDevice(device: {
@@ -102,6 +104,7 @@ export function serializeDevice(device: {
   connectedAt: Date;
   connectedAccountId: string | null;
   androidVersion: string | null;
+  tokenHash?: string | null;
   connectedAccount?: { label: string } | null;
 }): DeviceDto {
   return {
@@ -115,6 +118,8 @@ export function serializeDevice(device: {
     connectedAccountId: device.connectedAccountId,
     connectedAccountLabel: device.connectedAccount?.label ?? null,
     androidVersion: device.androidVersion,
+    // Never the hash itself, only whether there is one.
+    needsPairing: device.tokenHash === null,
   };
 }
 

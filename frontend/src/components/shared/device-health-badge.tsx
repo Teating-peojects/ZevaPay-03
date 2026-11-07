@@ -10,9 +10,17 @@ export function DeviceHealthBadge({
   device,
   now,
 }: {
-  device: Pick<ApiDevice, "status" | "lastActiveAt">;
+  device: Pick<ApiDevice, "status" | "lastActiveAt" | "needsPairing">;
   now: number;
 }) {
+  // A device without a token cannot send anything, whatever its old status says.
+  if (device.needsPairing) {
+    return (
+      <Badge tone="warning" dot>
+        Pair again
+      </Badge>
+    );
+  }
   const health = deviceHealth(device, now);
   return (
     <Badge tone={health.tone} dot>
