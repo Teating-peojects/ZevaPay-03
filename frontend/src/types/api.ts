@@ -302,3 +302,23 @@ export interface CheckoutView {
   /** Whether the customer can still type a TrxID. */
   canSubmit: boolean;
 }
+
+export interface ApiWebhook {
+  id: string;
+  url: string;
+  events: string[];
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface ApiWebhookDelivery {
+  id: string;
+  event: string;
+  status: "PENDING" | "DELIVERED" | "FAILED";
+  attempts: number;
+  responseCode: number | null;
+  lastError: string | null;
+  createdAt: string;
+  deliveredAt: string | null;
+  nextAttemptAt: string | null;
+}

@@ -20,6 +20,8 @@ export const store = {
   merchants: [] as Row[],
   accounts: [] as Row[],
   audits: [] as Row[],
+  webhookEndpoints: [] as Row[],
+  webhookDeliveries: [] as Row[],
 };
 
 type Relation = { table: keyof typeof store; fk: string; many: boolean; local?: string };
@@ -32,6 +34,7 @@ const relations: Record<string, Record<string, Relation>> = {
   },
   attempts: { payment: { table: "payments", fk: "paymentId", many: false } },
   apiKeys: { merchant: { table: "merchants", fk: "merchantId", many: false } },
+  webhookDeliveries: { endpoint: { table: "webhookEndpoints", fk: "endpointId", many: false } },
   merchants: { paymentAccounts: { table: "accounts", fk: "merchantId", many: true, local: "id" } },
 };
 
@@ -55,10 +58,12 @@ function matches(table: string, row: Row, where: Row | undefined): boolean {
       if ("in" in want) return want.in.includes(have);
       if ("notIn" in want) return !want.notIn.includes(have);
       if ("not" in want) return !same(have, want.not);
-      if ("gt" in want) return have > want.gt;
-      if ("gte" in want) return have >= want.gte;
-      if ("lt" in want) return have < want.lt;
-      if ("lte" in want) return have <= want.lte;
+      if ("has" in want) return Array.isArray(have) && have.includes(want.has);
+      // As in SQL, a missing value is never greater or smaller than anything.
+      if ("gt" in want) return have != null && have > want.gt;
+      if ("gte" in want) return have != null && have >= want.gte;
+      if ("lt" in want) return have != null && have < want.lt;
+      if ("lte" in want) return have != null && have <= want.lte;
     }
     return same(have, want);
   });
@@ -155,6 +160,8 @@ export const prisma: Row = {
   apiKey: table("apiKeys"),
   merchant: table("merchants"),
   auditLog: table("audits"),
+  webhookEndpoint: table("webhookEndpoints", () => ({ isActive: true, events: [], secret: null })),
+  webhookDelivery: table("webhookDeliveries", () => ({ attempts: 0, responseCode: null, lastError: null, deliveredAt: null })),
   $transaction: async (callback: (tx: Row) => Promise<unknown>) => {
     const snapshot = structuredClone(store);
     try {

@@ -117,6 +117,45 @@ Authorization: Bearer zp_live_…
 
 Poll no faster than every few seconds; webhooks are not available yet.
 
+## 4. Webhooks (optional)
+
+Instead of polling, add an address under **Developers → Webhooks**. ZevaPay then POSTs JSON to it when a payment changes:
+
+```json
+{
+  "id": "evt_Qk3…",
+  "type": "payment.confirmed",
+  "createdAt": "2026-11-07T10:00:00.000Z",
+  "data": {
+    "paymentId": "…", "reference": "TXN-591589", "orderId": "1182",
+    "status": "CONFIRMED", "amountMinor": 300000, "currency": "BDT",
+    "confirmedAt": "2026-11-07T10:00:00.000Z"
+  }
+}
+```
+
+Events: `payment.confirmed`, `payment.review`, and `webhook.test` (from the **Send test** button).
+
+**Check the signature before you trust a message.** Each request carries `ZevaPay-Signature: t=<unix seconds>,v1=<hex>`, where `v1` is the HMAC-SHA256, keyed with your signing secret, of `<t>.<raw request body>`. Use the raw body, not re-serialised JSON. Reject a timestamp more than 5 minutes old.
+
+```js
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+function isFromZevaPay(rawBody, header, secret) {
+  const parts = Object.fromEntries(header.split(",").map((p) => p.split("=")));
+  if (Math.abs(Date.now() / 1000 - Number(parts.t)) > 300) return false;
+  const expected = createHmac("sha256", secret).update(`${parts.t}.${rawBody}`).digest("hex");
+  const a = Buffer.from(expected), b = Buffer.from(parts.v1 ?? "");
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+```
+
+**Delivery is at least once.** Answer with any 2xx within 8 seconds. Anything else (or no answer) is retried after 1 min, 5 min, 30 min, 2 h and 6 h, then marked Failed. Redirects are not followed. The same event is resent with the same `id`, so keep the ids you have handled and ignore repeats.
+
+Addresses must be public `https://` URLs. Names that resolve to private or local addresses are refused each time we connect.
+
+A webhook only says "ZevaPay recorded this". For anything that releases goods, you can still confirm with `GET /api/v1/checkout/payments/:id`.
+
 ## Errors
 
 `401` missing, wrong, revoked or expired key. `403` the merchant is not

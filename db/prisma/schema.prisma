@@ -561,6 +561,8 @@ model WebhookEndpoint {
   id String @id @default(cuid())
   url String
   secretHash String
+  /// Signing secret. HMAC needs the secret itself, not a hash of it. Shown to the merchant once.
+  secret String?
   events String[]
   isActive Boolean @default(true)
   createdAt DateTime @default(now())
@@ -576,10 +578,16 @@ model WebhookDelivery {
   status String
   attempts Int @default(0)
   responseCode Int?
+  paymentId String?
+  payload Json?
+  nextAttemptAt DateTime?
+  lastError String?
+  deliveredAt DateTime?
   createdAt DateTime @default(now())
   endpointId String
   endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
   @@index([endpointId, createdAt])
+  @@index([status, nextAttemptAt])
 }
 model ApiRequestLog {
   id String @id @default(cuid())

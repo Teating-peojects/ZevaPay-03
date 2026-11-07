@@ -237,6 +237,21 @@ checkout page. See [checkout-integration.md](./checkout-integration.md).
 | GET | `/public/checkout/:token` | link secret | What the customer's page shows |
 | POST | `/public/checkout/:token/trxid` | link secret | The customer's TrxID |
 
+### Webhooks
+
+Merchant session, same roles as API keys. At most 3 addresses per merchant.
+
+| Call | What it does |
+| --- | --- |
+| `GET /api/v1/merchant/webhooks` | Lists addresses (no secrets). |
+| `POST /api/v1/merchant/webhooks` | `{ url, events? }`. The address must be `https://` and public. Returns `{ webhook, secret }`; **the secret is returned once**. |
+| `PATCH /api/v1/merchant/webhooks/:id` | `{ isActive }`. |
+| `DELETE /api/v1/merchant/webhooks/:id` | Removes the address and its history. |
+| `POST /api/v1/merchant/webhooks/:id/test` | Queues a `webhook.test` event (10 per minute). |
+| `GET /api/v1/merchant/webhooks/:id/deliveries` | The last 25 deliveries with status, tries and last error. |
+
+Events: `payment.confirmed` (a notification matched, or a reviewer accepted it) and `payment.review` (a match needs a person). See `checkout-integration.md` for the body, the signature and the retry schedule.
+
 ### Matching a TrxID to an SMS
 
 `POST /merchant/payments/:id/attempts` takes `{ "provider": "BKASH" | "NAGAD", "trxId": "DK3508MJ4R" }`

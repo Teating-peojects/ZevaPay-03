@@ -1,5 +1,6 @@
 import type { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../db.js";
+import { enqueueWebhookEvent } from "./webhooks.js";
 import { parseNotification } from "../parser/index.js";
 import { recordAudit } from "./audit.js";
 import { canSettlePayment, canTransitionPaymentStatus } from "./payment-state.js";
@@ -185,6 +186,9 @@ async function decideAndApply(target: SettleTarget): Promise<SettleResult | null
           data: { status: "CANCELLED" },
         });
       }
+
+      // Queued with the change itself, so neither can happen without the other.
+      await enqueueWebhookEvent(tx, payment.merchantId, payment.id, approve ? "payment.confirmed" : "payment.review");
     });
   } catch (error) {
     if (error instanceof SettlementConflict) return null;
@@ -330,6 +334,8 @@ export async function resolvePaymentAfterReview(
     },
     data: { status: accept ? "CONFIRMED" : "FAILED" },
   });
+
+  if (accept) await enqueueWebhookEvent(tx, transaction.merchantId, payment.id, "payment.confirmed");
 
   return { paymentId: payment.id, status: next };
 }

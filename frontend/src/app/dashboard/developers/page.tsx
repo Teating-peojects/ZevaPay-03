@@ -2,6 +2,7 @@
 
 import { PageHeader } from "@/components/layout/page-header";
 import { ApiKeysPanel } from "./api-keys-panel";
+import { WebhooksPanel } from "./webhooks-panel";
 import { CheckoutGuide } from "./checkout-guide";
 
 export default function DevelopersPage() {
@@ -12,6 +13,7 @@ export default function DevelopersPage() {
         description="Keys let your own server create payments and check their status. A secret is shown once, when you create the key."
       />
       <ApiKeysPanel />
+      <WebhooksPanel />
       <CheckoutGuide />
     </div>
   );

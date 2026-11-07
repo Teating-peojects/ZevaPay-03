@@ -285,3 +285,9 @@ which is harmless.
 Audit logs are append-only and are not pruned automatically. If they grow
 faster than expected, add a retention job — nothing in the application
 depends on them being kept forever.
+
+## Webhooks
+
+The API process sends queued webhooks itself, every 15 seconds. Run one API instance, or several: a delivery is claimed before it is sent, so it is not sent twice at once. If the process is stopped, queued events wait in the database and go out when it starts again.
+
+Signing secrets are stored in the database as text, because signing needs the secret itself. Protect database backups accordingly. Outbound requests are refused when the address resolves to a private or local network, so the API server cannot be pointed at your internal services.
