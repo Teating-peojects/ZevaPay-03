@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { CircleCheck, Clock, Loader2, TriangleAlert } from "lucide-react";
+import { CircleCheck, Clock, TriangleAlert } from "lucide-react";
+import { ZLoader } from "@/components/brand/z-loader";
 import { CopyableValue } from "@/components/shared/copyable-value";
 import { ProviderLogo } from "@/components/shared/provider-logo";
 import { Alert } from "@/components/ui/alert";
@@ -200,7 +201,7 @@ function Checkout({
   } else if (view.awaitingSms) {
     body = (
       <div className="flex flex-col items-center gap-4 py-2 text-center" role="status" aria-live="polite">
-        <Loader2 className="size-10 animate-spin text-brand-link motion-reduce:animate-none" aria-hidden="true" />
+        <ZLoader className="w-16" label="Waiting for your payment" />
         <div>
           <h1 className="text-lg font-semibold text-ink">Waiting for your payment</h1>
           <p className="mt-1 text-sm text-ink-soft">

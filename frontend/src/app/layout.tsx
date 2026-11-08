@@ -1,3 +1,4 @@
+import { ZLoader } from "@/components/brand/z-loader";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider, themeInitScript } from "@/components/theme/theme-provider";
@@ -60,6 +61,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="flex min-h-full flex-col bg-canvas text-ink">
+        {/* A short Z splash on a full load or reload. Fades out by itself. */}
+        <div className="zp-splash" aria-hidden="true">
+          <ZLoader className="w-28" />
+        </div>
         <ThemeProvider>
           <ToastProvider>{children}</ToastProvider>
         </ThemeProvider>

@@ -433,6 +433,48 @@
   }
 }
 
+/* ZevaPay loader: the Z holds still and its speed lines run left to right. */
+@keyframes zp-line-flow {
+  0%   { transform: translateX(-70%); opacity: 0; }
+  35%  { opacity: 1; }
+  70%  { transform: translateX(0);    opacity: 1; }
+  100% { transform: translateX(45%);  opacity: 0; }
+}
+.zp-loader-line {
+  animation: zp-line-flow 0.75s cubic-bezier(0.3, 0.1, 0.4, 1) infinite both;
+}
+/* Invisible for the first moments, so a quick page never flashes it. */
+@keyframes zp-loader-appear {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.zp-loader-delayed {
+  animation: zp-loader-appear 0.1s linear 0.15s both;
+}
+
+/* Shown once on a full page load or reload (not when moving between pages).
+   Pure CSS: it fades itself out and then stops catching clicks. */
+@keyframes zp-splash {
+  0%, 55% { opacity: 1; visibility: visible; }
+  100%    { opacity: 0; visibility: hidden; }
+}
+.zp-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--zp-canvas, #fff);
+  pointer-events: none;
+  animation: zp-splash 0.7s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zp-splash { display: none; }
+  .zp-loader-line { animation: none; opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
