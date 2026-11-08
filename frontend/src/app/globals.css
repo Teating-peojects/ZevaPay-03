@@ -454,6 +454,32 @@
 .zp-speedlines::before { bottom: 9%; width: 30%; z-index: 0; }
 .zp-speedlines::after  { bottom: 4%;  width: 20%; z-index: 0; }
 
+/* Premium home page: grid, glow and floating bubbles. */
+.zp-grid {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.06) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse at 70% 40%, #000 20%, transparent 75%);
+}
+.zp-glow {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  pointer-events: none;
+}
+.zp-light-sheen {
+  background:
+    radial-gradient(40rem 20rem at 100% 0%, rgb(10 60 255 / 0.08), transparent 60%),
+    radial-gradient(40rem 20rem at 0% 100%, rgb(0 212 255 / 0.10), transparent 60%);
+}
+@keyframes zp-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+.zp-float { animation: zp-float 5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .zp-float { animation: none; } }
+
 /* ZevaPay loader: the Z holds still and its speed lines run left to right. */
 @keyframes zp-line-flow {
   0%   { transform: translateX(-70%); opacity: 0; }

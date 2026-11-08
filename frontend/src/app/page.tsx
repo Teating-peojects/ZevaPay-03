@@ -1,13 +1,21 @@
 import type { Metadata } from "next";
+import { ArrowRight, ChevronRight, Eye, Lock, ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { ArrowRight, Check, CircleCheck, Clock, Eye, Lock, ShieldCheck } from "lucide-react";
 import { PlanCards } from "@/components/billing/plan-cards";
 import { Faq } from "@/components/marketing/faq";
 import { HeroDemo } from "@/components/marketing/hero-demo";
 import { PublicLayout } from "@/components/marketing/public-layout";
+import {
+  Bubble,
+  CheckoutWindow,
+  DashboardWindow,
+  OutcomeCard,
+  PhoneSms,
+  SiteWindow,
+  Window,
+} from "@/components/marketing/visuals";
 import { ProviderLogo } from "@/components/shared/provider-logo";
 import { ButtonLink } from "@/components/ui/button";
-import { PROVIDERS } from "@/data/providers";
 import { PUBLIC_PLANS } from "@/lib/plans";
 
 export const metadata: Metadata = {
@@ -15,50 +23,6 @@ export const metadata: Metadata = {
   description:
     "ZevaPay reads the payment SMS on your phone, matches the TrxID and amount, and tells your website the order is paid. Free for 30 days.",
 };
-
-const steps = [
-  {
-    title: "The customer pays",
-    body: "Your website sends them to a ZevaPay checkout page. They pay with bKash or Nagad and type in the TrxID.",
-  },
-  {
-    title: "Your phone hears about it",
-    body: "The ZevaPay app on your shop phone forwards the payment SMS. It only reads messages from payment providers.",
-  },
-  {
-    title: "Your website is told",
-    body: "ZevaPay matches provider, TrxID and amount. On a match the order is confirmed and your website gets a signed notice.",
-  },
-];
-
-const outcomes = [
-  {
-    icon: CircleCheck,
-    tone: "text-success-fg",
-    title: "Confirmed",
-    body: "The SMS agrees on provider, TrxID and amount. The order is approved with no one lifting a finger.",
-  },
-  {
-    icon: Eye,
-    tone: "text-warning-fg",
-    title: "Needs your review",
-    body: "A TrxID was found but something does not agree, such as the amount. You see both sides and decide to accept or reject.",
-  },
-  {
-    icon: Clock,
-    tone: "text-info-fg",
-    title: "Waiting",
-    body: "No matching SMS yet. The customer sees a waiting screen, and it confirms the moment the message arrives.",
-  },
-];
-
-const CODE = `POST /api/v1/checkout/payments
-Authorization: Bearer zp_live_...
-
-{ "amountMinor": 300000, "orderId": "ORD-1182",
-  "returnUrl": "https://shop.example/thanks" }
-
--> { "id": "...", "checkoutUrl": "https://.../pay/..." }`;
 
 const faqItems = [
   {
@@ -94,191 +58,178 @@ const faqItems = [
 ];
 
 
+
+function Arrow() {
+  return (
+    <span className="hidden size-9 shrink-0 items-center justify-center self-center rounded-full bg-white text-[#0A3CFF] shadow-md ring-1 ring-slate-900/5 md:flex">
+      <ChevronRight className="size-4" aria-hidden="true" />
+    </span>
+  );
+}
+
 export default function HomePage() {
   return (
     <PublicLayout>
       {/* Hero */}
       <section className="zp-hero zp-speedlines relative overflow-hidden text-white">
-        <div className="relative z-10 mx-auto grid max-w-6xl items-center gap-12 px-4 pb-16 pt-14 sm:px-6 lg:grid-cols-[1.15fr_1fr] lg:pb-24 lg:pt-20">
+        <div className="zp-grid absolute inset-0" aria-hidden="true" />
+        <div className="zp-glow -right-24 top-10 size-96 bg-cyan-400/30" aria-hidden="true" />
+        <div className="zp-glow -left-24 bottom-0 size-80 bg-blue-600/50" aria-hidden="true" />
+
+        <div className="relative z-10 mx-auto grid max-w-6xl items-center gap-10 px-4 pb-14 pt-12 sm:px-6 lg:grid-cols-[1.2fr_1fr] lg:pb-20 lg:pt-16">
           <div>
-            <h1 className="text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl xl:text-[3.5rem]">
+            <h1 className="text-4xl font-bold leading-[1.06] tracking-tight sm:text-5xl xl:text-[3.2rem]">
               Your customer pays.
               <br />
               Your order confirms itself.
             </h1>
-            <p className="mt-6 max-w-xl text-lg leading-relaxed text-blue-100">
-              ZevaPay reads the payment SMS on your phone, matches the TrxID and
-              amount, and tells your website the order is paid. No more
-              checking the bKash app by hand.
+            <p className="mt-5 max-w-md text-lg leading-snug text-blue-100">
+              bKash and Nagad payments, matched from your phone&rsquo;s SMS.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <ButtonLink
-                href="/register"
-                size="lg"
-                className="w-full bg-white text-[#06196f] hover:bg-blue-50 sm:w-auto"
-              >
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <ButtonLink href="/register" size="lg" className="w-full bg-white text-[#06196f] hover:bg-blue-50 sm:w-auto">
                 Start free for 30 days
               </ButtonLink>
-              <ButtonLink
-                href="#how-it-works"
-                size="lg"
-                variant="outline"
-                className="w-full border-white/40 bg-transparent text-white hover:bg-white/10 sm:w-auto"
-              >
+              <ButtonLink href="#how-it-works" size="lg" variant="outline" className="w-full border-white/40 bg-transparent text-white hover:bg-white/10 sm:w-auto">
                 See how it works
               </ButtonLink>
             </div>
-            <ul className="mt-8 flex flex-wrap gap-2 text-[13px]">
-              {["No PIN or OTP, ever", "Never touches your money", "Free for 30 days"].map((item) => (
-                <li key={item} className="flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 ring-1 ring-white/20">
-                  <Check className="size-3.5 text-cyan-300" aria-hidden="true" />
-                  {item}
-                </li>
-              ))}
-            </ul>
           </div>
-          <HeroDemo />
+
+          <div id="supported" className="relative scroll-mt-24">
+            <Bubble className="-left-2 top-6 hidden sm:flex lg:-left-10">
+              <ProviderLogo provider="BKASH" size="sm" /> bKash ৳3,000
+            </Bubble>
+            <Bubble className="-right-2 top-24 hidden sm:flex lg:-right-6" delay={900}>
+              <span className="size-2 rounded-full bg-emerald-500" /> order.paid sent
+            </Bubble>
+            <Bubble className="-left-4 bottom-10 hidden sm:flex lg:-left-12" delay={1700}>
+              <ProviderLogo provider="NAGAD" size="sm" /> Nagad ৳1,250
+            </Bubble>
+            <HeroDemo />
+          </div>
         </div>
       </section>
 
-      {/* Providers */}
-      <section id="supported" className="scroll-mt-20 border-b border-line bg-surface">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-10 gap-y-4 px-4 py-6 sm:px-6">
-          <p className="text-sm text-ink-muted">Works with</p>
-          {([PROVIDERS.BKASH, PROVIDERS.NAGAD] as const).map((provider) => (
-            <span key={provider.id} className="flex items-center gap-2.5">
-              <ProviderLogo provider={provider.id} size="md" />
-              <span className="text-[15px] font-semibold text-ink">{provider.name}</span>
-            </span>
-          ))}
-          <p className="text-sm text-ink-muted">Rocket and Upay are coming next.</p>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section id="how-it-works" className="scroll-mt-20 border-b border-line">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-          <h2 className="max-w-2xl text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            From checkout to confirmed in under a minute.
-          </h2>
-          <ol className="relative mt-12 grid gap-10 md:grid-cols-3 md:gap-8">
-            <span
-              aria-hidden="true"
-              className="absolute left-[16.6%] right-[16.6%] top-5 hidden h-0.5 bg-gradient-to-r from-[#0A3CFF] via-[#00B8FF] to-[#00D4FF] md:block"
-            />
-            {steps.map((step, index) => (
-              <li key={step.title} className="relative">
-                <span className="relative flex size-10 items-center justify-center rounded-full bg-[#0A3CFF] text-[15px] font-bold text-white ring-8 ring-canvas">
-                  {index + 1}
-                </span>
-                <h3 className="mt-5 text-lg font-semibold text-ink">{step.title}</h3>
-                <p className="mt-2 max-w-sm text-[15px] leading-relaxed text-ink-soft">{step.body}</p>
-              </li>
-            ))}
-          </ol>
+      {/* Flow */}
+      <section id="how-it-works" className="zp-light-sheen scroll-mt-20 border-b border-line">
+        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-14">
+          <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">Pay. Match. Confirm.</h2>
+          <div className="mt-8 grid gap-6 md:grid-cols-[1fr_auto_1fr_auto_1fr]">
+            <div>
+              <CheckoutWindow />
+              <p className="mt-3 text-center text-sm font-semibold text-ink">Customer pays</p>
+            </div>
+            <Arrow />
+            <div>
+              <PhoneSms />
+              <p className="mt-3 text-center text-sm font-semibold text-ink">Phone forwards the SMS</p>
+            </div>
+            <Arrow />
+            <div>
+              <SiteWindow />
+              <p className="mt-3 text-center text-sm font-semibold text-ink">Your site is told</p>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Outcomes */}
       <section className="border-b border-line bg-elevated">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-          <h2 className="max-w-2xl text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Every payment ends one of three ways.
-          </h2>
-          <div className="mt-10 grid gap-5 md:grid-cols-3">
-            {outcomes.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div key={item.title} className="rounded-2xl border border-line bg-surface p-6">
-                  <Icon className={`size-7 ${item.tone}`} aria-hidden="true" />
-                  <h3 className="mt-4 text-lg font-semibold text-ink">{item.title}</h3>
-                  <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">{item.body}</p>
-                </div>
-              );
-            })}
+        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-14">
+          <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">Every payment ends clearly.</h2>
+          <div className="mt-8 grid gap-5 md:grid-cols-3">
+            {([
+              ["ok", "Matches: approved."],
+              ["review", "Differs: you decide."],
+              ["wait", "No SMS yet: it waits."],
+            ] as const).map(([kind, caption]) => (
+              <div key={kind} className="rounded-2xl bg-white p-3 shadow-[0_18px_40px_-24px_rgba(3,8,74,0.4)] ring-1 ring-slate-900/5">
+                <OutcomeCard kind={kind} />
+                <p className="px-1 pb-1 pt-3 text-sm font-semibold text-slate-800">{caption}</p>
+              </div>
+            ))}
           </div>
+        </div>
+      </section>
+
+      {/* Dashboard */}
+      <section className="relative overflow-hidden border-b border-line bg-[#03084a] text-white">
+        <div className="zp-glow left-1/3 top-0 size-96 bg-blue-600/40" aria-hidden="true" />
+        <div className="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-14">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Every payment in one place.</h2>
+          <div className="relative mt-8">
+            <DashboardWindow />
+            <Bubble className="-right-2 -top-4 hidden sm:flex lg:-right-6">
+              <span className="size-2 rounded-full bg-amber-500" /> 1 to review
+            </Bubble>
+          </div>
+          <p className="mt-3 text-xs text-blue-200/70">Sample data.</p>
         </div>
       </section>
 
       {/* Developers */}
-      <section className="border-b border-line">
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-2">
+      <section className="zp-light-sheen border-b border-line">
+        <div className="mx-auto grid max-w-6xl items-center gap-8 px-4 py-12 sm:px-6 sm:py-14 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-              Connect your website with one request.
-            </h2>
-            <p className="mt-4 max-w-md text-[17px] leading-relaxed text-ink-soft">
-              Create a payment, send the customer to the link you get back, and
-              we post a signed notice to your server when it is confirmed. You
-              can also ask for the status at any time.
-            </p>
-            <Link
-              href="/features"
-              className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-link hover:text-brand-link-hover"
-            >
-              Read what ZevaPay can do
+            <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">One request to connect.</h2>
+            <Link href="/features" className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-link hover:text-brand-link-hover">
+              See what ZevaPay can do
               <ArrowRight className="size-4" aria-hidden="true" />
             </Link>
           </div>
-          <pre className="overflow-x-auto rounded-2xl bg-[#03084a] p-5 font-mono text-[13px] leading-relaxed text-blue-100 shadow-lg">
-            <code>{CODE}</code>
-          </pre>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Window title="POST /checkout/payments">
+              <pre className="overflow-x-auto bg-[#03084a] p-4 font-mono text-[12px] leading-relaxed text-blue-100">
+                <code>{`{
+  "amountMinor": 300000,
+  "orderId": "ORD-1182",
+  "returnUrl": "https://shop.example/thanks"
+}`}</code>
+              </pre>
+            </Window>
+            <Window title="Response">
+              <pre className="overflow-x-auto bg-[#03084a] p-4 font-mono text-[12px] leading-relaxed text-blue-100">
+                <code>{`{
+  "id": "clx9...",
+  "status": "PENDING",
+  "checkoutUrl": "https://.../pay/..."
+}`}</code>
+              </pre>
+            </Window>
+          </div>
         </div>
       </section>
 
       {/* Security */}
-      <section id="security" className="scroll-mt-20 bg-[#03084a] text-white">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-          <h2 className="max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl">
-            ZevaPay never asks for your PIN.
-          </h2>
-          <div className="mt-10 grid gap-8 md:grid-cols-3">
+      <section id="security" className="scroll-mt-20 border-b border-white/10 bg-[#03084a] text-white">
+        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-14">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">No PIN. No OTP. No money moved.</h2>
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
             {[
-              {
-                icon: Lock,
-                title: "No PIN, no OTP, no money moved",
-                body: "It only reads the SMS your provider already sends to your phone. Your money stays in your own account.",
-              },
-              {
-                icon: ShieldCheck,
-                title: "Keys stay on your server",
-                body: "API keys are shown once. The phone app uses a separate key that cannot create payments, and you can remove it any time.",
-              },
-              {
-                icon: Eye,
-                title: "Honest about what confirmed means",
-                body: "Confirmed means the SMS on your phone matched. It is not a check with bKash or Nagad, so for a large order, look in the provider app first.",
-              },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <div key={item.title}>
-                  <Icon className="size-6 text-cyan-300" aria-hidden="true" />
-                  <h3 className="mt-4 text-lg font-semibold">{item.title}</h3>
-                  <p className="mt-2 text-[15px] leading-relaxed text-blue-100">{item.body}</p>
-                </div>
-              );
-            })}
+              { icon: Lock, text: "Reads only the SMS your provider sends." },
+              { icon: ShieldCheck, text: "Phone key can’t create payments." },
+              { icon: Eye, text: "Confirmed means the SMS matched." },
+            ].map(({ icon: Icon, text }) => (
+              <div key={text} className="flex items-center gap-4 rounded-2xl bg-white/5 p-5 ring-1 ring-white/10 backdrop-blur">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0A3CFF] to-[#00B8FF]">
+                  <Icon className="size-5 text-white" aria-hidden="true" />
+                </span>
+                <p className="text-[15px] font-medium leading-snug">{text}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="scroll-mt-20 border-b border-line">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-          <h2 className="max-w-2xl text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Free for 30 days. Then pay for the time you want.
-          </h2>
-          <p className="mt-4 max-w-xl text-[17px] leading-relaxed text-ink-soft">
-            Every plan has everything. The longer you pay for, the less each month costs.
-          </p>
-          <div className="mt-10">
+      <section id="pricing" className="zp-light-sheen scroll-mt-20 border-b border-line">
+        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-14">
+          <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">Free for 30 days.</h2>
+          <div className="mt-8">
             <PlanCards
               plans={PUBLIC_PLANS}
-              ctaFor={(plan) => ({
-                label: plan.months === 0 ? "Start free" : "Choose plan",
-                href: "/register",
-              })}
+              ctaFor={(plan) => ({ label: plan.months === 0 ? "Start free" : "Choose plan", href: "/register" })}
             />
           </div>
         </div>
@@ -286,25 +237,18 @@ export default function HomePage() {
 
       {/* FAQ */}
       <section id="faq" className="scroll-mt-20 border-b border-line bg-elevated">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-          <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Questions shop owners ask
-          </h2>
-          <Faq items={faqItems} className="mt-10 max-w-3xl" />
+        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-14">
+          <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">Questions</h2>
+          <Faq items={faqItems} className="mt-8 max-w-3xl" />
         </div>
       </section>
 
       {/* Closing */}
-      <section className="zp-hero text-white">
-        <div className="mx-auto flex max-w-6xl flex-col items-start gap-6 px-4 py-14 sm:px-6 md:flex-row md:items-center md:justify-between">
-          <h2 className="max-w-xl text-3xl font-bold tracking-tight sm:text-4xl">
-            Try it on your next order.
-          </h2>
-          <ButtonLink
-            href="/register"
-            size="lg"
-            className="bg-white text-[#06196f] hover:bg-blue-50"
-          >
+      <section className="zp-hero relative overflow-hidden text-white">
+        <div className="zp-grid absolute inset-0" aria-hidden="true" />
+        <div className="relative mx-auto flex max-w-6xl flex-col items-start gap-5 px-4 py-12 sm:px-6 md:flex-row md:items-center md:justify-between">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Try it on your next order.</h2>
+          <ButtonLink href="/register" size="lg" className="bg-white text-[#06196f] hover:bg-blue-50">
             Start free for 30 days
           </ButtonLink>
         </div>
