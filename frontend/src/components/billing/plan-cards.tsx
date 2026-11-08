@@ -1,6 +1,5 @@
 import * as React from "react";
 import { Check } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { formatBDT } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -50,7 +49,7 @@ export function PlanCards({
   const ordered = [...plans].sort((a, b) => a.months - b.months);
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
       {ordered.map((plan) => {
         const isTrial = plan.months === 0;
         const isBest = best?.code === plan.code && paid.length > 1;
@@ -66,22 +65,37 @@ export function PlanCards({
             key={plan.code}
             aria-label={plan.name}
             className={cn(
-              "relative flex flex-col rounded-xl border bg-surface p-5",
-              isBest ? "border-success-fg shadow-sm" : "border-line",
+              "relative flex flex-col overflow-hidden rounded-xl border bg-surface",
+              isBest ? "border-2 border-success-fg shadow-md lg:-my-3" : "border-line",
             )}
           >
-            <div className="flex min-h-6 items-center gap-2">
-              {isBest ? <Badge tone="success">{`Best value · Save ${save}%`}</Badge> : null}
-              {!isBest && save > 0 ? <Badge tone="success">{`Save ${save}%`}</Badge> : null}
-              {currentCode === plan.code ? <Badge tone="info" dot>Your plan</Badge> : null}
+            {/* The banner row: the same height on every card so prices line up. */}
+            <div
+              className={cn(
+                "flex min-h-9 items-center gap-2 px-5 text-[12px] font-semibold",
+                isBest ? "bg-success-fg text-canvas" : "text-success-fg",
+              )}
+            >
+              {isBest ? `Best value · Save ${save}%` : save > 0 ? `Save ${save}%` : null}
+              {currentCode === plan.code ? (
+                <span className={cn("ml-auto rounded-full px-2 py-0.5 text-[11px]", isBest ? "bg-canvas/20" : "bg-brand-tint text-brand-link")}>
+                  Your plan
+                </span>
+              ) : null}
             </div>
+            <div className="flex flex-1 flex-col px-5 pb-5 pt-2">
 
-            <h3 className="mt-2 text-[15px] font-semibold text-ink">
+            <h3 className="text-[15px] font-semibold text-ink">
               {isTrial ? "Free trial" : plan.months === 1 ? "Monthly" : plan.months === 12 ? "Yearly" : `${plan.months} months`}
             </h3>
 
-            <p className="mt-3 flex items-baseline gap-1.5">
-              <span className="text-3xl font-semibold tracking-tight text-ink">
+            <p className="mt-3 flex flex-wrap items-baseline gap-x-2">
+              {save > 0 ? (
+                <span className="text-sm text-ink-muted line-through">
+                  {formatBDT(base / 100)}
+                </span>
+              ) : null}
+              <span className="text-4xl font-semibold tracking-tight text-ink">
                 {isTrial ? "৳0" : formatBDT(plan.monthlyPriceMinor / 100)}
               </span>
               {isTrial ? null : <span className="text-sm text-ink-muted">/ month</span>}
@@ -117,6 +131,7 @@ export function PlanCards({
                 {cta.label}
               </ButtonLink>
             ) : null}
+            </div>
           </article>
         );
       })}
