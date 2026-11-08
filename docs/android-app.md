@@ -20,10 +20,10 @@ the app decided, a modified app could approve anything.
 
 ## Flow
 
-1. **Pair.** The merchant opens Devices in the dashboard, picks the payment
-   account, and gets a code like `ZP-4821-KQ` (valid 15 minutes, one use). They
-   type it into the app. The app calls `POST /api/v1/device/pair` with the
-   code, a stable `deviceId` it generates once (`ZP-SMS-` + 6 hex), a name and
+1. **Connect.** In two steps. Step 1: the merchant types the ZevaPay address,
+   email and password (kept in memory only). Step 2: they paste a phone key
+   made on the website (Devices → Connect). The app then calls
+   `POST /api/v1/device/connect` with the email, password, key, a stable `deviceId` it generates once (`ZP-SMS-` + 6 hex), a name and
    the Android version. The reply carries `deviceToken` **once**. Save it in
    encrypted storage (Android Keystore + EncryptedSharedPreferences).
 2. **Listen.** A manifest-declared `SMS_RECEIVED` receiver gets each incoming
@@ -54,7 +54,7 @@ the app decided, a modified app could approve anything.
 | Reply | Meaning | App does |
 | --- | --- | --- |
 | `201` / `200` with `duplicate: true` | Stored (or already stored) | Delete from the queue. Safe to send twice. |
-| `401 UNAUTHORIZED_DEVICE` | Token wrong, or device removed in the dashboard | Stop sending. Show "Pair this phone again". Keep the queue. |
+| `401 UNAUTHORIZED_DEVICE` | Token wrong, or device removed in the dashboard | Stop sending. Show "Connect this phone again". Keep the queue. |
 | `400` / `422` | The server will never accept this message | Mark it failed, keep it visible to the user, do not retry forever. |
 | `429` | Too many requests | Wait, then retry with backoff. |
 | `5xx`, no network | Try later | Retry with growing delay (30 s, 1 m, 5 m … capped at 1 h). |
@@ -65,7 +65,8 @@ anything.
 
 ## Screens
 
-- **Pair**: code field, short explanation, error text from the server.
+- **Connect**: step 1 address, email, password; step 2 phone key; error text
+  from the server. A wrong email or password returns to step 1.
 - **Status**: paired as *name*, last heartbeat, messages waiting, last sent,
   and a clear red state when SMS permission is missing, battery optimisation
   is killing the app, or the token was rejected.

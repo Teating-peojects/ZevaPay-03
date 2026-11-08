@@ -345,10 +345,19 @@ model Session {
   @@index([expiresAt])
 }
 
+/// What a key may be used for. INTEGRATION keys let a merchant's website create
+/// payments. DEVICE keys only let a phone connect to the SMS app, together with
+/// the merchant's email and password; they cannot create payments.
+enum ApiKeyKind {
+  INTEGRATION
+  DEVICE
+}
+
 /// A scoped API key for programmatic access.
 model ApiKey {
   id          String    @id @default(cuid())
   name        String
+  kind        ApiKeyKind @default(INTEGRATION)
   /// Only a prefix is shown after creation; the full value is never returned again.
   keyPrefix   String
   /// SHA-256 hash of the full key.

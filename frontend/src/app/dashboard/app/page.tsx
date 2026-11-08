@@ -13,8 +13,8 @@ const STEPS = [
   "Open this page on the Android phone that receives your payment SMS, and tap Download.",
   "When the download finishes, open the file. Android will ask you to allow installs from your browser. Allow it for this one install.",
   "Open ZevaPay SMS and tap Allow SMS. Also allow it to run in the background, so no payment is missed.",
-  "In the dashboard open Devices, choose a payment account and create a pairing code.",
-  "In the app enter your ZevaPay address (shown below) and the pairing code, then tap Connect.",
+  "In the dashboard open Devices, tap Connect, and make a phone key. Copy it; it is shown once.",
+  "In the app enter your ZevaPay address (shown below), your email and password, then the phone key.",
 ];
 
 export default function PhoneAppPage() {

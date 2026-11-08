@@ -8,7 +8,7 @@ import { SAMPLE_NOTIFICATIONS } from "../parser/samples.js";
  * phone would:
  *
  *   1. sign in to the merchant account
- *   2. request a pairing code
+ *   2. make a phone key
  *   3. exchange the code for a device binding
  *   4. post provider notifications at a realistic cadence
  *
@@ -25,7 +25,7 @@ let deviceToken: string | null = null;
 interface Args {
   email: string;
   password: string;
-  pairingCode?: string;
+  deviceKey?: string;
   deviceId: string;
   deviceName: string;
   count: number;
@@ -54,8 +54,8 @@ function parseArgs(argv: string[]): Args {
         args.password = value;
         i += 1;
         break;
-      case "--pairing":
-        args.pairingCode = value;
+      case "--device-key":
+        args.deviceKey = value;
         i += 1;
         break;
       case "--device":
@@ -148,56 +148,39 @@ async function main() {
   }
   console.log(`Signed in as ${login.payload.user.email}`);
 
-  // 2. Obtain a pairing code — either one we were given, or a fresh one.
-  //    The device is bound to the account that matches the provider the
-  //    simulator will post for, so notifications land on a sensible account.
-  let pairingCode = args.pairingCode;
-  if (!pairingCode) {
-    const targetProvider = SAMPLE_NOTIFICATIONS[0]!.provider;
-
-    const accountsResponse = await fetch(
-      `${API_BASE}/api/v1/merchant/accounts`,
-      { headers: { cookie: cookieHeader() } },
-    );
-    const accountsPayload = (await accountsResponse.json()) as {
-      accounts?: { id: string; provider: string; label: string }[];
-    };
-    const accounts: { id: string; provider: string; label: string }[] =
-      accountsPayload.accounts ?? [];
-    const match = accounts.find(
-      (account) => account.provider === targetProvider,
-    );
-    const accountId = match?.id ?? accounts[0]?.id ?? null;
-
-    const pairing = await request(
-      "/api/v1/merchant/devices/pairing-codes",
-      { connectedAccountId: accountId },
+  // 2. Make a phone key, unless we were given one. A phone key is the third
+  //    thing the app asks for, after the email and password.
+  let deviceKey = args.deviceKey;
+  if (!deviceKey) {
+    const made = await request(
+      "/api/v1/merchant/device-keys",
+      { name: `Simulator ${new Date().toISOString().slice(0, 16)}` },
       { asUser: true },
     );
-    if (!pairing.ok) {
-      console.error("Could not create a pairing code:", pairing.payload);
+    if (!made.ok) {
+      console.error("Could not make a phone key:", made.payload);
       process.exit(1);
     }
-    pairingCode = pairing.payload.pairingCode.code;
-    console.log(
-      `Pairing code: ${pairingCode} (account: ${match?.label ?? "none"})`,
-    );
+    deviceKey = made.payload.secret;
+    console.log("Made a phone key for this run.");
   }
 
-  // 3. Pair the simulated device.
-  console.log(`Pairing ${args.deviceId}…`);
-  const pair = await request("/api/v1/device/pair", {
-    code: pairingCode,
+  // 3. Connect the simulated phone, as the app does.
+  console.log(`Connecting ${args.deviceId}…`);
+  const pair = await request("/api/v1/device/connect", {
+    email: args.email,
+    password: args.password,
+    deviceKey,
     deviceId: args.deviceId,
     deviceName: args.deviceName,
     androidVersion: "Android 14 (Simulator)",
   });
   if (!pair.ok) {
-    console.error("Pairing failed:", pair.payload);
+    console.error("Connecting failed:", pair.payload);
     process.exit(1);
   }
   deviceToken = pair.payload.deviceToken;
-  console.log(`Paired: ${pair.payload.device.name} (${pair.payload.device.deviceId})\n`);
+  console.log(`Connected: ${pair.payload.device.name} (${pair.payload.device.deviceId})\n`);
 
   // 4. Post notifications.
   console.log(

@@ -12,15 +12,26 @@ sealed class ApiResult {
     data object Unauthorized : ApiResult()
 
     /** The server will never accept this request as it is. Do not retry it. */
-    data class Rejected(val message: String) : ApiResult()
+    data class Rejected(val message: String, val code: String? = null) : ApiResult()
 
     /** Try again later: no network, too many requests, or a server error. */
     data class Retry(val reason: String) : ApiResult()
 }
 
+const val INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
+const val INVALID_DEVICE_KEY = "INVALID_DEVICE_KEY"
+private val CONNECT_ERRORS = setOf(INVALID_CREDENTIALS, INVALID_DEVICE_KEY)
+
 /** Maps an HTTP status to what the app should do. Pure, so it can be tested. */
 fun classify(status: Int, json: JSONObject?): ApiResult = when {
     status in 200..299 -> ApiResult.Ok(json ?: JSONObject())
+    // Signing in a phone answers 401 for a wrong email/password or phone key.
+    // Those are not "this phone was removed", so they keep their own code.
+    status == 401 && json?.optJSONObject("error")?.optString("code") in CONNECT_ERRORS ->
+        ApiResult.Rejected(
+            json?.optJSONObject("error")?.optString("message").orEmpty().ifBlank { "The server refused the request." },
+            json?.optJSONObject("error")?.optString("code"),
+        )
     status == 401 -> ApiResult.Unauthorized
     status == 429 || status >= 500 -> ApiResult.Retry("The server answered $status.")
     else -> ApiResult.Rejected(

@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Help & Support" };
 const TOPICS = [
   {
     title: "Pair a device",
-    body: "Create a pairing code on the Devices page and enter it in the SMS Bridge app on the phone that receives your provider notifications.",
+    body: "Make a phone key on the Devices page, then sign in to the SMS app with your email and password and enter the key on the phone that receives your provider notifications.",
     href: "/dashboard/devices",
     action: "Open devices",
   },

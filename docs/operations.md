@@ -147,9 +147,9 @@ npm --prefix backend run simulate -- \
 | `--device-name` | `Simulated Counter Terminal` | Shown in the dashboard           |
 | `--count`       | `10`                   | How many notifications to post           |
 | `--interval`    | `3000`                 | Milliseconds between them                |
-| `--pairing`     | —                      | Use an existing pairing code             |
+| `--device-key`  | —                      | Use an existing phone key                |
 
-The simulator requests its own pairing code, so it works without any manual
+The simulator makes its own phone key, so it works without any manual
 setup. Leave the dashboard open while it runs and the transactions appear
 live.
 

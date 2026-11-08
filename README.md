@@ -119,14 +119,14 @@ Devices are not users. A phone authenticates with a shared ingest secret plus
 its own device identifier, never with a person's session.
 
 ```
-POST /api/v1/device/pair            exchange a pairing code for a device binding
+POST /api/v1/device/connect         email + password + phone key → device token
 POST /api/v1/device/notifications   post a raw provider notification
 POST /api/v1/device/heartbeat       keep the device marked online
 ```
 
 The Android app is out of scope for this repository. `backend/src/tools/simulate.ts`
-stands in for it and follows the same flow a real phone would: sign in, request
-a pairing code, exchange it, then post notifications at a realistic cadence.
+stands in for it and follows the same flow a real phone would: make a phone
+key, connect with email, password and the key, then post notifications at a realistic cadence.
 
 ```bash
 npm --prefix backend run simulate -- --email owner@dhanmondi.test --count 10

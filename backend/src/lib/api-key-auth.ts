@@ -50,13 +50,14 @@ export async function resolveApiKey(
     select: {
       id: true,
       merchantId: true,
+      kind: true,
       revokedAt: true,
       expiresAt: true,
       lastUsedAt: true,
       merchant: { select: { status: true } },
     },
   });
-  if (!key || key.revokedAt || (key.expiresAt && key.expiresAt <= now)) throw refusal;
+  if (!key || key.kind !== "INTEGRATION" || key.revokedAt || (key.expiresAt && key.expiresAt <= now)) throw refusal;
 
   if (key.merchant.status !== "ACTIVE") {
     throw new ForbiddenError("This merchant account is not active.");

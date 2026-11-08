@@ -4,7 +4,7 @@ import { config } from "../config.js";
 import { prisma } from "../db.js";
 import { channels, eventHub } from "../lib/events.js";
 import { authenticateDevice } from "../lib/device-auth.js";
-import { pairDevice } from "../lib/device-pairing.js";
+import { connectDevice } from "../lib/device-connect.js";
 import { generateTransactionReference } from "../lib/hash.js";
 import { parseNotification } from "../parser/index.js";
 import { settleFromTransaction, type SettleResult } from "../lib/payment-matching.js";
@@ -23,30 +23,33 @@ const notificationSchema = z.object({
     .optional(),
 });
 
-const pairingSchema = z.object({
-  code: z.string().trim().min(4, "A pairing code is required"),
+const connectSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Enter the email you use on ZevaPay"),
+  // Not trimmed or length-limited here: it is only compared to the stored hash.
+  password: z.string().min(1, "A password is required").max(256),
+  deviceKey: z.string().trim().min(10, "A phone key is required").max(100),
   deviceId: z.string().trim().min(3, "A device identifier is required"),
   deviceName: z.string().trim().min(2).max(80).optional(),
   androidVersion: z.string().trim().max(40).optional(),
 });
 
 export async function registerDeviceRoutes(app: FastifyInstance): Promise<void> {
-  // A device is not a user. After pairing it holds its own token and sends it
+  // A device is not a user. After connecting it holds its own token and sends it
   // as `Authorization: Bearer zpd_…`. The token identifies the device; a
   // `deviceId` in the body is only checked against it.
 
   // ---------------------------------------------------------------------
-  // POST /api/v1/device/pair
+  // POST /api/v1/device/connect
   // ---------------------------------------------------------------------
   app.post(
-    "/api/v1/device/pair",
+    "/api/v1/device/connect",
     {
-      // The pairing code is the only credential here, so keep guesses scarce.
+      // Email, password and phone key are guessable credentials: keep tries scarce.
       config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
     },
     async (request, reply) => {
-      const body = pairingSchema.parse(request.body);
-      const { device, token } = await pairDevice(body);
+      const body = connectSchema.parse(request.body);
+      const { device, token } = await connectDevice(body);
 
       eventHub.publish(
         channels.merchant(device.merchantId),
@@ -62,7 +65,7 @@ export async function registerDeviceRoutes(app: FastifyInstance): Promise<void> 
           merchantId: device.merchantId,
           status: device.status,
         },
-        // Shown once. The device keeps it and sends it on every later call.
+        // Shown once. The phone keeps it and sends it on every later call.
         deviceToken: token,
       });
     },

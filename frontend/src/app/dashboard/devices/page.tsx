@@ -19,7 +19,7 @@ import { useServerTable } from "@/hooks/use-server-table";
 import { useLiveEvents } from "@/hooks/use-live-events";
 import { useNow } from "@/hooks/use-now";
 import type { ApiDevice, ApiPaymentAccount } from "@/types/api";
-import { ConnectDeviceModal } from "./connect-device-modal";
+import { PhoneKeyModal } from "./phone-key-modal";
 import { EditDeviceModal } from "./edit-device-modal";
 
 export default function DevicesPage() {
@@ -260,12 +260,11 @@ export default function DevicesPage() {
         {selected ? <DeviceDetailsBody device={selected} now={now} /> : null}
       </Drawer>
 
-      <ConnectDeviceModal
+      <PhoneKeyModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        onPaired={table.refresh}
-        accounts={accounts.rows}
-        paired={justPaired}
+        onConnected={table.refresh}
+        connected={justPaired}
       />
 
       <EditDeviceModal
@@ -281,7 +280,7 @@ export default function DevicesPage() {
       <ConfirmDialog
         open={pendingDisconnect !== null}
         title="Disconnect device?"
-        description={`This removes "${pendingDisconnect?.name}" from your business. It will not be able to post notifications until it is paired again with a new code. Transactions it already reported are kept.`}
+        description={`This removes "${pendingDisconnect?.name}" from your business. It will not be able to post notifications until it is connected again. Transactions it already reported are kept.`}
         confirmLabel="Disconnect device"
         loading={disconnecting}
         onConfirm={handleDisconnect}

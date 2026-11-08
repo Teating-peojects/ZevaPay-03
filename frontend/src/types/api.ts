@@ -136,13 +136,6 @@ export interface ApiAuditLog {
   createdAt: string;
 }
 
-export interface ApiPairingCode {
-  id: string;
-  code: string;
-  expiresAt: string;
-  connectedAccountId: string | null;
-}
-
 export interface ApiSession {
   id: string;
   userAgent: string | null;

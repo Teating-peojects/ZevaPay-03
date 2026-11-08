@@ -81,22 +81,30 @@ audit log records it.
 
 ## Device ingest
 
-A device is not a user. When it pairs, it receives its **own token**
+A device is not a user. When it connects, it receives its **own token**
 (`zpd_…`, shown once; only its SHA-256 is stored) and sends it as
 `Authorization: Bearer` on every later call. The token identifies the device,
-and the device can only ever act on the merchant it is paired with. A
+and the device can only ever act on the merchant it is connected to. A
 `deviceId` in a request body is only checked against the token, never used to
 look a device up.
 
-- The pairing code is **single-use**, expires after **15 minutes**, is made
-  from a cryptographic random source, and is claimed atomically, so two
-  devices cannot both use it.
-- A device already paired to a different merchant cannot be re-paired.
-  Pairing a device of your own again issues a new token and the old one stops
-  working. Removing a device in the dashboard ends its token at once.
-- The pairing code is the only credential on the pairing call, so that call is
-  limited to 10 per minute per address. Notifications are limited to 600 per
-  minute.
+- Connecting a phone needs three things together: the merchant's **email and
+  password**, and a **phone key** (`zp_phone_…`) made on the website. The key
+  must belong to the same merchant as the account. The three are checked in
+  that order, and a wrong email or password gives one answer whether the
+  email exists or not.
+- A phone key is a different kind of key from an API key. It can only connect
+  a phone; it cannot create payments, and an API key cannot connect a phone.
+  It is shown once, only its SHA-256 is stored, and the merchant can remove
+  it at any time. Removing a key stops new phones using it; phones already
+  connected keep their own token until they are disconnected in the dashboard.
+- The password is sent once, over HTTPS, in the connect call. The app keeps it
+  in memory only for the two sign-in steps and never saves it.
+- A device already connected to a different merchant cannot be taken over.
+  Connecting a device of your own again issues a new token and the old one
+  stops working. Removing a device in the dashboard ends its token at once.
+- The connect call holds guessable credentials, so it is limited to 10 per
+  minute per address. Notifications are limited to 600 per minute.
 
 This matters because a payment is confirmed from a notification: if anyone
 could post notifications for someone else's device, they could confirm a
@@ -128,7 +136,7 @@ per IP. Auth endpoints are stricter:
 | `POST /auth/login`      | 10 / minute  |
 | `POST /auth/refresh`    | 60 / minute  |
 | `POST /auth/forgot-password` | 5 / 15 minutes |
-| `POST /device/pair`     | 30 / minute  |
+| `POST /device/connect`  | 10 / minute  |
 | `POST /device/notifications` | 600 / minute |
 | `POST /device/heartbeat`| 120 / minute |
 

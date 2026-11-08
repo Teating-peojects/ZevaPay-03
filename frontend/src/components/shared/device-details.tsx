@@ -78,7 +78,7 @@ export function DeviceDetailsBody({
           {formatRelativeTime(device.lastActiveAt, now)} ·{" "}
           {formatDateTime(device.lastActiveAt)}
         </DetailRow>
-        <DetailRow label="Paired on">{formatDate(device.connectedAt)}</DetailRow>
+        <DetailRow label="Connected on">{formatDate(device.connectedAt)}</DetailRow>
         <DetailRow label="Android version">
           {device.androidVersion ?? (
             <span className="font-normal text-ink-faint">Unknown</span>

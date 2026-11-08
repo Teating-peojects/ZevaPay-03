@@ -142,7 +142,9 @@ Requires a merchant role. The merchant is always taken from the session.
 | PATCH  | `/merchant/accounts/:id`    | ✓     | Update an account                        |
 | DELETE | `/merchant/accounts/:id`    | ✓     | Remove an account                        |
 | GET    | `/merchant/devices`         | —     | `q`, `status`                            |
-| POST   | `/merchant/devices/pairing-codes` | ✓ | Issue a single-use pairing code   |
+| GET    | `/merchant/device-keys`     | —     | Active phone keys (prefix only)          |
+| POST   | `/merchant/device-keys`     | ✓     | Make a phone key; full key returned once |
+| DELETE | `/merchant/device-keys/:id` | ✓     | Remove a phone key                       |
 | PATCH  | `/merchant/devices/:id`     | ✓     | Rename, re-link or pause a device        |
 | DELETE | `/merchant/devices/:id`     | ✓     | Disconnect a device                      |
 | GET    | `/merchant/transactions`    | —     | `q`, `status`, `provider`, `from`, `to`  |
@@ -173,24 +175,19 @@ Requires a merchant role. The merchant is always taken from the session.
 of `PERSONAL`, `MERCHANT`, `AGENT`, `BUSINESS`. The stored number is masked
 when it is read back.
 
-**`POST /merchant/devices/pairing-codes`**
+**`POST /merchant/device-keys`**
 
 ```json
-{ "connectedAccountId": "clx..." }
+{ "name": "Shop counter phone" }
 ```
 
-`connectedAccountId` is optional; `null` means "any account". The response
-holds the code and its expiry:
+Makes a phone key (`zp_phone_…`). It lets a phone connect to the SMS app, with
+the merchant's email and password. It cannot create payments. The full key is
+in `secret`, **once**; later reads show only the prefix. At most 10 active keys.
 
 ```json
-{
-  "pairingCode": {
-    "id": "clx...",
-    "code": "ZP-W5FT-9Z",
-    "expiresAt": "2026-11-02T17:25:00.528Z",
-    "connectedAccountId": null
-  }
-}
+{ "deviceKey": { "id": "clx...", "name": "Shop counter phone", "keyPrefix": "zp_phone_Ab3x…", "createdAt": "…" },
+  "secret": "zp_phone_…" }
 ```
 
 The code is **single-use** and expires after 15 minutes.
@@ -350,38 +347,43 @@ These are real counts from the database.
 ## Device ingest — `/api/v1/device`
 
 These endpoints are for the Android device, not for a signed-in user.
-`/device/pair` takes only a single-use pairing code. The other calls take the
-device's own token, issued by `/device/pair`, as `Authorization: Bearer zpd_…`.
+`/device/connect` takes the merchant's email and password and a phone key. The
+other calls take the device's own token, issued by `/device/connect`, as `Authorization: Bearer zpd_…`.
 A request with a missing or wrong token gets `401 UNAUTHORIZED_DEVICE`, and so
 does a body whose `deviceId` is not the token's device. Rate limits: 10
-pairings, 600 notifications and 120 heartbeats per minute.
+connects, 600 notifications and 120 heartbeats per minute.
 
 | Method | Path                    | Description                                  |
 | ------ | ----------------------- | -------------------------------------------- |
-| POST   | `/device/pair`          | Exchange a pairing code for a device binding |
+| POST   | `/device/connect`       | Email + password + phone key → device token  |
 | POST   | `/device/notifications` | Post a raw provider notification             |
 | POST   | `/device/heartbeat`     | Keep the device marked online                |
 
-**`POST /device/pair`**
+**`POST /device/connect`**
 
 ```json
 {
-  "code": "ZP-W5FT-9Z",
+  "email": "owner@shop.example",
+  "password": "…",
+  "deviceKey": "zp_phone_…",
   "deviceId": "ZP-SMS-8F2A41",
   "deviceName": "Counter Terminal 1",
   "androidVersion": "14"
 }
 ```
 
-The code must be unused and unexpired. A device that is already paired to a
-different merchant is refused. The reply carries the device's token, **once**:
+The email and password must be right, the merchant active, and the phone key
+the merchant's own, not removed and not expired. A wrong email or password is
+`401 INVALID_CREDENTIALS`; a wrong key is `401 INVALID_DEVICE_KEY`. A device
+already connected to a different merchant is refused. The reply carries the
+device's token, **once**:
 
 ```json
 { "device": { "id": "…", "name": "Counter Terminal 1", "deviceId": "ZP-SMS-8F2A41", "merchantId": "…", "status": "ONLINE" },
   "deviceToken": "zpd_…" }
 ```
 
-Store it in the app's private storage. Pairing the same device again gives a
+Store it in the app's private storage. Connecting the same device again gives a
 new token and the old one stops working.
 
 **`POST /device/notifications`**
@@ -443,7 +445,7 @@ Event types:
 | --------------------- | ------------------------------------------ |
 | `transaction.created` | A device reports a notification            |
 | `transaction.reviewed`| A review decision is saved                 |
-| `device.paired`       | A device exchanges a pairing code          |
+| `device.paired`       | A phone connects          |
 | `device.updated`      | A device is renamed, re-linked or paused   |
 | `device.removed`      | A device is disconnected                   |
 | `account.created`     | A payment account is added                 |

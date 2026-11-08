@@ -70,7 +70,7 @@ src/
     auth.ts             # Registration, sessions, password reset
     merchant.ts         # The merchant's own records
     admin.ts            # Platform-wide operations
-    device.ts           # Device pairing and notification ingest
+    device.ts           # Device connect and notification ingest
     stream.ts           # Server-Sent Events
   parser/
     index.ts            # Provider detection and dispatch
@@ -89,8 +89,8 @@ src/
 ## The device simulator
 
 The Android app is out of scope. The simulator stands in for it and follows
-the same flow a real phone would: sign in, request a pairing code, exchange it
-for a device binding, then post notifications.
+the same flow a real phone would: sign in, make a phone key, connect with email,
+password and the key, then post notifications.
 
 ```bash
 npm run simulate -- --email owner@dhanmondi.test --count 10

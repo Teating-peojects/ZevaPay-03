@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { store } from "./helpers/fake-prisma.js";
 
@@ -7,21 +7,38 @@ vi.mock("../src/db.js", async () => ({
 }));
 
 import { authenticateDevice, readDeviceToken } from "../src/lib/device-auth.js";
-import { pairDevice } from "../src/lib/device-pairing.js";
-import { generateDeviceToken, generatePairingCode, looksLikeDeviceToken, sha256 } from "../src/lib/hash.js";
+import { connectDevice } from "../src/lib/device-connect.js";
+import { hashPassword } from "../src/lib/password.js";
+import { generateDeviceToken, generateDeviceKeySecret, looksLikeDeviceKey, looksLikeDeviceToken, sha256 } from "../src/lib/hash.js";
 
-const FUTURE = new Date(Date.now() + 10 * 60_000);
+const KEY = generateDeviceKeySecret();
+const OTHER_KEY = generateDeviceKeySecret();
+let passwordHash = "";
 
 function seed() {
   store.devices = [];
-  store.accounts = [{ id: "acc1", merchantId: "m1", provider: "BKASH", label: "bKash shop" }];
-  store.pairingCodes = [
-    { id: "c1", code: "ZP-AAAA-BB", merchantId: "m1", connectedAccountId: "acc1", expiresAt: FUTURE, usedAt: null, createdAt: new Date() },
-    { id: "c2", code: "ZP-CCCC-DD", merchantId: "m1", connectedAccountId: null, expiresAt: FUTURE, usedAt: null, createdAt: new Date() },
-    { id: "c3", code: "ZP-EEEE-FF", merchantId: "m2", connectedAccountId: null, expiresAt: FUTURE, usedAt: null, createdAt: new Date() },
+  store.merchants = [
+    { id: "m1", status: "ACTIVE" },
+    { id: "m2", status: "ACTIVE" },
+    { id: "m3", status: "SUSPENDED" },
+  ];
+  store.users = [
+    { id: "u1", email: "owner@shop.test", merchantId: "m1", isActive: true, passwordHash },
+    { id: "u2", email: "other@shop.test", merchantId: "m2", isActive: true, passwordHash },
+    { id: "u3", email: "susp@shop.test", merchantId: "m3", isActive: true, passwordHash },
+    { id: "u4", email: "off@shop.test", merchantId: "m1", passwordHash, isActive: false },
+  ];
+  store.apiKeys = [
+    { id: "k1", merchantId: "m1", kind: "DEVICE", keyHash: sha256(KEY), revokedAt: null, expiresAt: null },
+    { id: "k2", merchantId: "m2", kind: "DEVICE", keyHash: sha256(OTHER_KEY), revokedAt: null, expiresAt: null },
   ];
 }
+beforeAll(async () => {
+  passwordHash = await hashPassword("correct horse");
+});
 beforeEach(seed);
+
+const ok = { email: "owner@shop.test", password: "correct horse", deviceKey: KEY };
 
 const bearer = (token: string) => ({ authorization: `Bearer ${token}` });
 
@@ -34,8 +51,11 @@ describe("tokens", () => {
     expect(looksLikeDeviceToken("zp_live_" + "a".repeat(32))).toBe(false);
   });
 
-  it("pairing codes use the readable alphabet", () => {
-    for (let i = 0; i < 50; i++) expect(generatePairingCode()).toMatch(/^ZP-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{2}$/);
+  it("phone keys are random, prefixed and not accepted as API keys", () => {
+    const k = generateDeviceKeySecret();
+    expect(k).toMatch(/^zp_phone_[A-Za-z0-9_-]{32}$/);
+    expect(looksLikeDeviceKey(k)).toBe(true);
+    expect(looksLikeDeviceKey("zp_live_" + "a".repeat(32))).toBe(false);
   });
 
   it("readDeviceToken accepts only a well-formed bearer token", () => {
@@ -49,58 +69,86 @@ describe("tokens", () => {
   });
 });
 
-describe("pairing", () => {
+describe("connecting a phone", () => {
   it("issues a token once and stores only its hash", async () => {
-    const { device, token } = await pairDevice({ code: "zp-aaaa-bb", deviceId: "ZP-SMS-1", deviceName: "Counter" });
+    const { device, token } = await connectDevice({ ...ok, deviceId: "ZP-SMS-1", deviceName: "Counter" });
     expect(looksLikeDeviceToken(token)).toBe(true);
-    expect(device).toMatchObject({ merchantId: "m1", deviceId: "ZP-SMS-1", connectedAccountId: "acc1", tokenHash: sha256(token) });
-    expect(JSON.stringify(store)).not.toContain(token);
-    expect(store.pairingCodes[0]).toMatchObject({ usedAt: expect.any(Date), deviceId: device.id });
+    expect(device).toMatchObject({ merchantId: "m1", deviceId: "ZP-SMS-1", tokenHash: sha256(token) });
+    expect(JSON.stringify(store.devices)).not.toContain(token);
+    expect(store.apiKeys[0]!.lastUsedAt).toBeInstanceOf(Date);
   });
 
-  it("refuses an unknown, used or expired code", async () => {
-    await expect(pairDevice({ code: "ZP-NOPE-00", deviceId: "d1x" })).rejects.toThrow(/not recognised/);
-    await pairDevice({ code: "ZP-AAAA-BB", deviceId: "ZP-SMS-1" });
-    await expect(pairDevice({ code: "ZP-AAAA-BB", deviceId: "ZP-SMS-2" })).rejects.toThrow(/already been used/);
-    store.pairingCodes[1]!.expiresAt = new Date(Date.now() - 1000);
-    await expect(pairDevice({ code: "ZP-CCCC-DD", deviceId: "ZP-SMS-3" })).rejects.toThrow(/expired/);
-    expect(store.devices).toHaveLength(1);
+  it("accepts the email in any letter case", async () => {
+    await expect(connectDevice({ ...ok, email: "OWNER@Shop.test", deviceId: "ZP-SMS-1" })).resolves.toBeTruthy();
+  });
+
+  it("refuses a wrong password, unknown email or disabled user with one answer", async () => {
+    for (const bad of [{ password: "nope" }, { email: "nobody@shop.test" }, { email: "off@shop.test" }]) {
+      await expect(connectDevice({ ...ok, ...bad, deviceId: "ZP-SMS-1" })).rejects.toMatchObject({ code: "INVALID_CREDENTIALS" });
+    }
+    expect(store.devices).toHaveLength(0);
+  });
+
+  it("refuses a suspended merchant", async () => {
+    await expect(
+      connectDevice({ ...ok, email: "susp@shop.test", deviceId: "ZP-SMS-1" }),
+    ).rejects.toThrow(/not active/);
+  });
+
+  it("refuses a missing, malformed, unknown, revoked or expired phone key", async () => {
+    const attempts = [KEY.slice(0, -1), "zp_live_" + "a".repeat(32), generateDeviceKeySecret(), ""];
+    for (const deviceKey of attempts) {
+      await expect(connectDevice({ ...ok, deviceKey, deviceId: "ZP-SMS-1" })).rejects.toMatchObject({ code: "INVALID_DEVICE_KEY" });
+    }
+    store.apiKeys[0]!.revokedAt = new Date();
+    await expect(connectDevice({ ...ok, deviceId: "ZP-SMS-1" })).rejects.toMatchObject({ code: "INVALID_DEVICE_KEY" });
+    store.apiKeys[0]!.revokedAt = null;
+    store.apiKeys[0]!.expiresAt = new Date(Date.now() - 1000);
+    await expect(connectDevice({ ...ok, deviceId: "ZP-SMS-1" })).rejects.toMatchObject({ code: "INVALID_DEVICE_KEY" });
+    expect(store.devices).toHaveLength(0);
+  });
+
+  it("refuses another merchant's phone key", async () => {
+    await expect(connectDevice({ ...ok, deviceKey: OTHER_KEY, deviceId: "ZP-SMS-1" })).rejects.toMatchObject({ code: "INVALID_DEVICE_KEY" });
+  });
+
+  it("refuses an integration key used as a phone key", async () => {
+    store.apiKeys[0]!.kind = "INTEGRATION";
+    await expect(connectDevice({ ...ok, deviceId: "ZP-SMS-1" })).rejects.toMatchObject({ code: "INVALID_DEVICE_KEY" });
+  });
+
+  it("checks the password before telling anyone whether the key was right", async () => {
+    await expect(
+      connectDevice({ ...ok, password: "nope", deviceKey: "wrong", deviceId: "ZP-SMS-1" }),
+    ).rejects.toMatchObject({ code: "INVALID_CREDENTIALS" });
   });
 
   it("will not take over another merchant's device", async () => {
-    await pairDevice({ code: "ZP-AAAA-BB", deviceId: "ZP-SMS-1" });
-    await expect(pairDevice({ code: "ZP-EEEE-FF", deviceId: "ZP-SMS-1" })).rejects.toThrow(/another merchant/);
+    await connectDevice({ ...ok, deviceId: "ZP-SMS-1" });
+    await expect(
+      connectDevice({ email: "other@shop.test", password: "correct horse", deviceKey: OTHER_KEY, deviceId: "ZP-SMS-1" }),
+    ).rejects.toThrow(/another merchant/);
     expect(store.devices[0]!.merchantId).toBe("m1");
-    expect(store.pairingCodes[2]!.usedAt).toBeNull();
   });
 
-  it("pairing again replaces the token, so the old one stops working", async () => {
-    const first = await pairDevice({ code: "ZP-AAAA-BB", deviceId: "ZP-SMS-1" });
-    const second = await pairDevice({ code: "ZP-CCCC-DD", deviceId: "ZP-SMS-1" });
+  it("connecting again replaces the token, so the old one stops working", async () => {
+    const first = await connectDevice({ ...ok, deviceId: "ZP-SMS-1" });
+    const second = await connectDevice({ ...ok, deviceId: "ZP-SMS-1" });
     expect(store.devices).toHaveLength(1);
     await expect(authenticateDevice(bearer(first.token))).rejects.toThrow();
     await expect(authenticateDevice(bearer(second.token))).resolves.toMatchObject({ deviceId: "ZP-SMS-1" });
-  });
-
-  it("lets only one of two devices racing on a code succeed", async () => {
-    const results = await Promise.allSettled([
-      pairDevice({ code: "ZP-AAAA-BB", deviceId: "ZP-SMS-1" }),
-      pairDevice({ code: "ZP-AAAA-BB", deviceId: "ZP-SMS-2" }),
-    ]);
-    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
   });
 });
 
 describe("authenticating a device", () => {
   async function paired() {
-    return pairDevice({ code: "ZP-AAAA-BB", deviceId: "ZP-SMS-1" });
+    return connectDevice({ ...ok, deviceId: "ZP-SMS-1" });
   }
 
   it("finds the device from its own token", async () => {
     const { token } = await paired();
     const device = await authenticateDevice(bearer(token));
     expect(device).toMatchObject({ deviceId: "ZP-SMS-1", merchantId: "m1" });
-    expect(device.connectedAccount).toMatchObject({ provider: "BKASH" });
   });
 
   it("accepts a body deviceId only if it is the token's own", async () => {

@@ -22,8 +22,8 @@ import java.util.concurrent.Executors
 import org.json.JSONObject
 
 /**
- * One screen. Not paired: enter the server address and the pairing code.
- * Paired: show whether SMS are getting through, and what the server said about
+ * One screen. Not connected: sign in with email and password, then enter the phone key.
+ * Connected: show whether SMS are getting through, and what the server said about
  * the latest ones.
  */
 class MainActivity : Activity() {
@@ -32,8 +32,13 @@ class MainActivity : Activity() {
     private lateinit var root: LinearLayout
     private val background = Executors.newSingleThreadExecutor()
     private var repairing = false
-    private var pairError: String? = null
-    private var pairing = false
+    private var step = 1
+    private var address = ""
+    private var email = ""
+    /** Kept in memory for the two steps only. Never saved, never logged. */
+    private var password = ""
+    private var connectError: String? = null
+    private var connecting = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,92 +68,141 @@ class MainActivity : Activity() {
 
     private fun render() {
         root.removeAllViews()
-        if (!store.isPaired || store.tokenRejected || repairing) renderPairing() else renderStatus()
+        if (!store.isPaired || store.tokenRejected || repairing) renderConnect() else renderStatus()
     }
 
-    // ---------------------------------------------------------------- pairing
+    // ---------------------------------------------------------------- connect
 
-    private fun renderPairing() {
+    /**
+     * Two steps. First the ZevaPay address and the merchant's email and
+     * password; then the phone key made on the website. Nothing is sent until
+     * the second step, and the password is kept in memory only, never saved.
+     */
+    private fun renderConnect() {
         heading("Connect this phone")
         if (store.tokenRejected) {
             note(
                 "The server no longer accepts this phone. It may have been removed in the dashboard. " +
-                    "Get a new pairing code and connect again. Messages already received are kept and will be sent.",
+                    "Sign in again to connect it. Messages already received are kept and will be sent.",
                 warning = true,
             )
-        } else {
-            note(
-                "In the ZevaPay dashboard open Devices, choose a payment account and create a pairing code. " +
-                    "Enter it here with your ZevaPay address.",
-            )
         }
-
-        val url = field("ZevaPay address", store.baseUrl ?: "https://", InputType.TYPE_TEXT_VARIATION_URI)
-        val code = field("Pairing code", "", InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS)
-        pairError?.let { note(it, warning = true) }
-
-        val button = Button(this).apply {
-            text = if (pairing) "Connecting…" else "Connect"
-            isEnabled = !pairing
-            setOnClickListener { pair(url.text.toString(), code.text.toString()) }
-        }
-        root.addView(button)
+        if (step == 1) renderSignIn() else renderPhoneKey()
 
         if (repairing && store.isPaired) {
-            root.addView(Button(this).apply {
-                text = "Cancel"
-                setOnClickListener {
-                    repairing = false
-                    pairError = null
-                    render()
-                }
-            })
+            button("Cancel") {
+                repairing = false
+                resetConnect()
+                render()
+            }
         }
     }
 
-    private fun pair(addressInput: String, codeInput: String) {
-        val address = UrlRules.normalize(addressInput, allowHttp = BuildConfig.DEBUG)
-        if (address == null) {
-            pairError = "Enter a full address that starts with https://."
+    private fun renderSignIn() {
+        note("Step 1 of 2. Sign in with the email and password you use on the ZevaPay website.")
+        val url = field("ZevaPay address", address.ifBlank { store.baseUrl ?: "https://" }, InputType.TYPE_TEXT_VARIATION_URI)
+        val mail = field("Email", email, InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS)
+        val pass = field("Password", "", InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        connectError?.let { note(it, warning = true) }
+
+        button("Next") {
+            val normalized = UrlRules.normalize(url.text.toString(), allowHttp = BuildConfig.DEBUG)
+            val typedEmail = mail.text.toString().trim()
+            val typedPassword = pass.text.toString()
+            connectError = when {
+                normalized == null -> "Enter a full address that starts with https://."
+                !typedEmail.contains("@") -> "Enter the email you use on ZevaPay."
+                typedPassword.isEmpty() -> "Enter your password."
+                else -> null
+            }
+            if (connectError == null) {
+                address = normalized!!
+                email = typedEmail
+                password = typedPassword
+                step = 2
+            }
             render()
-            return
         }
-        if (codeInput.trim().length < 4) {
-            pairError = "Enter the pairing code from the dashboard."
+    }
+
+    private fun renderPhoneKey() {
+        note(
+            "Step 2 of 2. On the ZevaPay website open Devices, tap Connect, make a phone key and paste it here. " +
+                "The key is shown only once.",
+        )
+        val key = field("Phone key", "", InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        connectError?.let { note(it, warning = true) }
+
+        root.addView(Button(this).apply {
+            text = if (connecting) "Connecting…" else "Connect"
+            isEnabled = !connecting
+            setOnClickListener { connect(key.text.toString()) }
+        })
+        if (!connecting) {
+            button("Back") {
+                connectError = null
+                step = 1
+                render()
+            }
+        }
+    }
+
+    private fun resetConnect() {
+        step = 1
+        password = ""
+        connectError = null
+        connecting = false
+    }
+
+    private fun connect(keyInput: String) {
+        val key = keyInput.trim()
+        if (key.length < 10) {
+            connectError = "Paste the phone key from the website."
             render()
             return
         }
 
-        pairError = null
-        pairing = true
+        connectError = null
+        connecting = true
         render()
 
         val body = JSONObject()
-            .put("code", codeInput.trim())
+            .put("email", email)
+            .put("password", password)
+            .put("deviceKey", key)
             .put("deviceId", store.deviceId)
             .put("deviceName", Build.MODEL.take(80).ifBlank { "Android phone" })
             .put("androidVersion", Build.VERSION.RELEASE.orEmpty().take(40))
 
+        val target = address
         background.execute {
-            val result = Api.post(address, "/api/v1/device/pair", body, token = null)
+            val result = Api.post(target, "/api/v1/device/connect", body, token = null)
             runOnUiThread {
-                pairing = false
+                connecting = false
                 when (result) {
                     is ApiResult.Ok -> {
                         val token = result.json.optString("deviceToken")
                         if (token.isBlank()) {
-                            pairError = "The server did not send a device token. Please try again."
+                            connectError = "The server did not send a device token. Please try again."
                         } else {
                             val name = result.json.optJSONObject("device")?.optString("name").orEmpty()
-                            store.savePairing(address, token, name.ifBlank { Build.MODEL })
+                            store.savePairing(target, token, name.ifBlank { Build.MODEL })
                             repairing = false
+                            resetConnect()
                             Workers.scheduleHeartbeat(this)
                             Workers.sendNow(this)
                         }
                     }
-                    is ApiResult.Rejected -> pairError = result.message
-                    is ApiResult.Retry -> pairError = "Could not reach the server. Check the address and your connection."
-                    ApiResult.Unauthorized -> pairError = "The server refused the request."
+                    is ApiResult.Rejected -> {
+                        connectError = result.message
+                        // A wrong email or password goes back to step 1; a wrong key stays.
+                        if (result.code == INVALID_CREDENTIALS) {
+                            password = ""
+                            step = 1
+                        }
+                    }
+                    is ApiResult.Retry -> connectError = "Could not reach the server. Check the address and your connection."
+                    ApiResult.Unauthorized -> connectError = "The server refused the request."
                 }
                 render()
             }
@@ -214,6 +268,7 @@ class MainActivity : Activity() {
         }
 
         button("Connect again") {
+            resetConnect()
             repairing = true
             render()
         }

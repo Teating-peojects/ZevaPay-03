@@ -43,7 +43,7 @@ cd android && gradle :app:testDebugUnitTest
 
 ## Checklist before trusting it
 
-- Pair, kill the app, reboot the phone: a new SMS still reaches the server.
+- Connect (email, password, phone key), kill the app, reboot the phone: a new SMS still reaches the server.
 - Airplane mode: a message queues, then arrives in order on reconnect.
 - The same SMS posted twice shows "Already sent" and no second transaction.
 - Remove the device in the dashboard: the next send gives "connect again".

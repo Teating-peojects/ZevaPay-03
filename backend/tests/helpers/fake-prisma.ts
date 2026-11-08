@@ -24,6 +24,7 @@ export const store = {
   webhookDeliveries: [] as Row[],
   devices: [] as Row[],
   pairingCodes: [] as Row[],
+  users: [] as Row[],
   plans: [] as Row[],
   subscriptions: [] as Row[],
 };
@@ -37,6 +38,7 @@ const relations: Record<string, Record<string, Relation>> = {
     attempts: { table: "attempts", fk: "paymentId", many: true, local: "id" },
   },
   attempts: { payment: { table: "payments", fk: "paymentId", many: false } },
+  users: { merchant: { table: "merchants", fk: "merchantId", many: false } },
   apiKeys: { merchant: { table: "merchants", fk: "merchantId", many: false } },
   subscriptions: { plan: { table: "plans", fk: "planId", many: false } },
   devices: { connectedAccount: { table: "accounts", fk: "connectedAccountId", many: false } },
@@ -163,7 +165,8 @@ export const prisma: Row = {
   })),
   paymentAttempt: table("attempts", () => ({ status: "PENDING" })),
   paymentAccount: table("accounts"),
-  apiKey: table("apiKeys"),
+  apiKey: table("apiKeys", () => ({ kind: "INTEGRATION", revokedAt: null, expiresAt: null, lastUsedAt: null })),
+  user: table("users", () => ({ isActive: true })),
   merchant: table("merchants"),
   auditLog: table("audits"),
   plan: { ...table("plans", () => ({ isActive: true, limits: {} })), upsert: async ({ where, create, update }: Row) => {

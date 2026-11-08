@@ -19,6 +19,7 @@ function seed(overrides: { key?: object; merchant?: object } = {}) {
     {
       id: "k1",
       merchantId: "m1",
+      kind: "INTEGRATION",
       keyHash: sha256(SECRET),
       revokedAt: null,
       expiresAt: null,
@@ -126,6 +127,9 @@ describe("resolveApiKey", () => {
       ForbiddenError,
     );
   });
-});
 
-void fakePrisma;
+  it("does not accept a phone key, even if its hash matches", async () => {
+    seed({ key: { kind: "DEVICE" } });
+    await expect(resolveApiKey({ "x-api-key": SECRET }, NOW)).rejects.toThrow(/valid API key/);
+  });
+});

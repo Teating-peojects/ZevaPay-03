@@ -11,7 +11,7 @@ import {
   ForbiddenError,
   NotFoundError,
 } from "../lib/errors.js";
-import { generateApiKeySecret, generatePairingCode, sha256 } from "../lib/hash.js";
+import { generateApiKeySecret, generateDeviceKeySecret, sha256 } from "../lib/hash.js";
 import {
   serializeAccount,
   serializeDevice,
@@ -455,50 +455,6 @@ export async function registerMerchantRoutes(app: FastifyInstance): Promise<void
   );
 
   // ---------------------------------------------------------------------
-  // POST /api/v1/merchant/devices/pairing-codes
-  // ---------------------------------------------------------------------
-  app.post(
-    "/api/v1/merchant/devices/pairing-codes",
-    requireWrite,
-    async (request, reply) => {
-      const merchantId = await app.resolveMerchantId(request);
-      const body = z
-        .object({ connectedAccountId: z.string().trim().nullable().optional() })
-        .parse(request.body ?? {});
-
-      if (body.connectedAccountId) {
-        const account = await prisma.paymentAccount.findFirst({
-          where: { id: body.connectedAccountId, merchantId },
-          select: { id: true },
-        });
-        if (!account) {
-          throw new NotFoundError("That payment account could not be found.");
-        }
-      }
-
-      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-
-      const pairing = await prisma.pairingCode.create({
-        data: {
-          merchantId,
-          code: generatePairingCode(),
-          expiresAt,
-          connectedAccountId: body.connectedAccountId ?? null,
-        },
-      });
-
-      return reply.status(201).send({
-        pairingCode: {
-          id: pairing.id,
-          code: pairing.code,
-          expiresAt: pairing.expiresAt.toISOString(),
-          connectedAccountId: pairing.connectedAccountId ?? null,
-        },
-      });
-    },
-  );
-
-  // ---------------------------------------------------------------------
   // PATCH /api/v1/merchant/devices/:id
   // ---------------------------------------------------------------------
   app.patch(
@@ -771,7 +727,7 @@ export async function registerMerchantRoutes(app: FastifyInstance): Promise<void
     async (request, reply) => {
       const merchantId = await app.resolveMerchantId(request);
       const keys = await prisma.apiKey.findMany({
-        where: { merchantId },
+        where: { merchantId, kind: "INTEGRATION" },
         orderBy: { createdAt: "desc" },
       });
 
@@ -859,6 +815,104 @@ export async function registerMerchantRoutes(app: FastifyInstance): Promise<void
         actorId: request.auth!.userId,
         merchantId,
         metadata: { apiKeyId: id },
+        ipAddress: request.ip,
+      });
+
+      return reply.send({ ok: true });
+    },
+  );
+
+  // ---------------------------------------------------------------------
+  // Phone keys: let a phone connect to the SMS app. They cannot create payments.
+  // GET/POST /api/v1/merchant/device-keys, DELETE /api/v1/merchant/device-keys/:id
+  // ---------------------------------------------------------------------
+  app.get(
+    "/api/v1/merchant/device-keys",
+    requireMerchant,
+    async (request, reply) => {
+      const merchantId = await app.resolveMerchantId(request);
+      const keys = await prisma.apiKey.findMany({
+        where: { merchantId, kind: "DEVICE", revokedAt: null },
+        orderBy: { createdAt: "desc" },
+      });
+      return reply.send({
+        deviceKeys: keys.map((key) => ({
+          id: key.id,
+          name: key.name,
+          keyPrefix: key.keyPrefix,
+          lastUsedAt: key.lastUsedAt?.toISOString() ?? null,
+          createdAt: key.createdAt.toISOString(),
+        })),
+      });
+    },
+  );
+
+  app.post(
+    "/api/v1/merchant/device-keys",
+    requireWrite,
+    async (request, reply) => {
+      const merchantId = await app.resolveMerchantId(request);
+      const body = z
+        .object({ name: z.string().trim().min(2, "A name is required").max(80) })
+        .parse(request.body);
+
+      const active = await prisma.apiKey.count({
+        where: { merchantId, kind: "DEVICE", revokedAt: null },
+      });
+      if (active >= 10) {
+        throw new ConflictError("You already have 10 phone keys. Remove one first.");
+      }
+
+      const secret = generateDeviceKeySecret();
+      const key = await prisma.apiKey.create({
+        data: {
+          merchantId,
+          userId: request.auth!.userId,
+          name: body.name,
+          kind: "DEVICE",
+          keyPrefix: `${secret.slice(0, 13)}…`,
+          keyHash: sha256(secret),
+        },
+      });
+
+      await recordAudit({
+        action: "API_KEY_CREATED",
+        actorId: request.auth!.userId,
+        merchantId,
+        metadata: { apiKeyId: key.id, name: body.name, kind: "DEVICE" },
+        ipAddress: request.ip,
+      });
+
+      return reply.status(201).send({
+        deviceKey: {
+          id: key.id,
+          name: key.name,
+          keyPrefix: key.keyPrefix,
+          createdAt: key.createdAt.toISOString(),
+        },
+        // The only time the full key is ever returned.
+        secret,
+      });
+    },
+  );
+
+  app.delete(
+    "/api/v1/merchant/device-keys/:id",
+    requireWrite,
+    async (request, reply) => {
+      const merchantId = await app.resolveMerchantId(request);
+      const { id } = z.object({ id: z.string().min(1) }).parse(request.params);
+
+      const key = await prisma.apiKey.findFirst({ where: { id, merchantId, kind: "DEVICE" } });
+      if (!key) throw new NotFoundError("That phone key could not be found.");
+
+      await prisma.apiKey.update({ where: { id }, data: { revokedAt: new Date() } });
+
+      await recordAudit({
+        action: "API_KEY_REVOKED",
+        actorId: request.auth!.userId,
+        merchantId,
+        metadata: { apiKeyId: id, kind: "DEVICE" },
         ipAddress: request.ip,
       });
 

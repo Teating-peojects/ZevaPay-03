@@ -75,7 +75,7 @@ const steps = [
   {
     title: "Connect Android Device",
     description:
-      "Install the ZevaPay Android app on a phone or tablet at your counter and pair it using the pairing code shown in your dashboard.",
+      "Install the ZevaPay Android app on a phone or tablet at your counter and sign in with your email, password and a phone key made in your dashboard.",
   },
   {
     title: "Receive Payment Notifications",

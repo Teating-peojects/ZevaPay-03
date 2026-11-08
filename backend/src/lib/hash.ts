@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomInt } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 
 /** SHA-256 hex digest — used for token and API-key lookups. */
 export function sha256(value: string): string {
@@ -8,21 +8,6 @@ export function sha256(value: string): string {
 /** URL-safe random token. */
 export function randomToken(bytes = 32): string {
   return randomBytes(bytes).toString("base64url");
-}
-
-/**
- * Human-friendly pairing code, e.g. `ZP-4821-KQ`.
- * Excludes characters that are easy to confuse when read aloud.
- */
-const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-export function generatePairingCode(): string {
-  const pick = (length: number) =>
-    Array.from({ length }, () => {
-      return CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
-    }).join("");
-
-  return `ZP-${pick(4)}-${pick(2)}`;
 }
 
 /**
@@ -60,4 +45,18 @@ export function generateDeviceToken(): string {
 /** Whether a value has the shape of a device token. Says nothing about validity. */
 export function looksLikeDeviceToken(value: string): boolean {
   return /^zpd_[A-Za-z0-9_-]{32}$/.test(value);
+}
+
+/**
+ * A key that lets a phone connect to the SMS app. It is not an API key: it
+ * cannot create payments. It is shown once, only its SHA-256 is stored, and it
+ * is only ever accepted together with the merchant's email and password.
+ */
+export function generateDeviceKeySecret(): string {
+  return `zp_phone_${randomBytes(24).toString("base64url")}`;
+}
+
+/** Whether a value has the shape of a phone key. Says nothing about validity. */
+export function looksLikeDeviceKey(value: string): boolean {
+  return /^zp_phone_[A-Za-z0-9_-]{32}$/.test(value);
 }

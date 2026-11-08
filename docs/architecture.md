@@ -28,7 +28,7 @@
 │  routes/auth.ts     sessions, registration, password reset          │
 │  routes/merchant.ts the merchant's own records                       │
 │  routes/admin.ts    platform-wide operations                         │
-│  routes/device.ts   device pairing and notification ingest          │
+│  routes/device.ts   device connect and notification ingest          │
 │  routes/stream.ts   Server-Sent Events                               │
 │  parser/            one parser per provider + a confidence score     │
 │  lib/events.ts      the in-process event hub                         │
@@ -205,8 +205,8 @@ The Android app is out of scope. `backend/src/tools/simulate.ts` stands in for
 it and follows the same flow a real phone would:
 
 1. sign in as a merchant;
-2. request a pairing code;
-3. exchange the code for a device binding;
+2. make a phone key;
+3. connect with the email, password and phone key;
 4. post provider notifications at a realistic cadence.
 
 It draws from `backend/src/parser/samples.ts`, which holds realistic provider
@@ -229,7 +229,7 @@ npm --prefix backend run simulate -- \
 | `PaymentAccount` | A provider account, masked when read back                  |
 | `Device`         | A paired phone, its status and last-seen time              |
 | `Transaction`    | A parsed notification, its confidence and its review state  |
-| `PairingCode`    | A short-lived, single-use pairing code                     |
+| `PairingCode`    | Unused since phone keys replaced pairing codes (kept, not dropped) |
 | `Session`        | A refresh token (hashed) with its device and IP            |
 | `ApiKey`         | A hashed key with its prefix, last use and revocation      |
 | `AuditLog`       | An append-only trail of sensitive actions                  |

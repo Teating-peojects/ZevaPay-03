@@ -17,7 +17,7 @@ export function DeviceHealthBadge({
   if (device.needsPairing) {
     return (
       <Badge tone="warning" dot>
-        Pair again
+        Connect again
       </Badge>
     );
   }

@@ -93,9 +93,18 @@ class ClassifyTest {
         assertTrue(classify(503, null) is ApiResult.Retry)
     }
 
+    @Test fun wrongSignInIsNotTreatedAsARemovedPhone() {
+        val credentials = classify(401, JSONObject("""{"error":{"code":"INVALID_CREDENTIALS","message":"Email or password is incorrect."}}"""))
+        assertEquals(ApiResult.Rejected("Email or password is incorrect.", INVALID_CREDENTIALS), credentials)
+        val key = classify(401, JSONObject("""{"error":{"code":"INVALID_DEVICE_KEY","message":"That phone key is not valid."}}"""))
+        assertEquals(ApiResult.Rejected("That phone key is not valid.", INVALID_DEVICE_KEY), key)
+        // Any other 401 still means the phone's own token was refused.
+        assertEquals(ApiResult.Unauthorized, classify(401, JSONObject("""{"error":{"code":"UNAUTHORIZED_DEVICE"}}""")))
+    }
+
     @Test fun otherClientErrorsAreFinalAndCarryTheServerMessage() {
-        val result = classify(400, JSONObject("""{"error":{"code":"BAD_REQUEST","message":"That pairing code has expired."}}"""))
-        assertEquals(ApiResult.Rejected("That pairing code has expired."), result)
+        val result = classify(400, JSONObject("""{"error":{"code":"BAD_REQUEST","message":"That request was not understood."}}"""))
+        assertEquals(ApiResult.Rejected("That request was not understood."), result)
         assertEquals(ApiResult.Rejected("The server answered 422."), classify(422, null))
     }
 }

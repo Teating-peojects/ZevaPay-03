@@ -59,8 +59,8 @@ const GROUPS = [
     items: [
       {
         icon: MonitorSmartphone,
-        title: "Device pairing",
-        body: "Pair an Android device with your merchant using a pairing code, then watch its connection status, health, and notification count from the dashboard.",
+        title: "Connect a phone",
+        body: "Pair an Android device with your merchant by signing in with your email, password and a phone key, then watch its connection status, health, and notification count from the dashboard.",
       },
       {
         icon: LayoutDashboard,
