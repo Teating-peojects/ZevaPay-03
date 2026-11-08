@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
+import { PlanCards } from "@/components/billing/plan-cards";
 import { PageHeader } from "@/components/layout/page-header";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiFetch } from "@/lib/api-client";
-import { formatBDT, formatDate } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import type { ApiBilling } from "@/types/api";
 
 export default function BillingPage() {
@@ -30,7 +31,6 @@ export default function BillingPage() {
   }, []);
 
   const current = data?.subscription;
-  const paid = data?.plans.filter((plan) => plan.months > 0) ?? [];
   const trial = data?.plans.find((plan) => plan.months === 0);
 
   return (
@@ -73,25 +73,16 @@ export default function BillingPage() {
       ) : null}
 
       {data ? (
-        <section aria-label="Plans" className="grid gap-4 sm:grid-cols-3">
-          {paid.map((plan) => (
-            <Card key={plan.code}>
-              <CardHeader>
-                <CardTitle>{plan.name}</CardTitle>
-                <CardDescription>
-                  {formatBDT(plan.monthlyPriceMinor / 100)} per month
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-1">
-                <p className="text-2xl font-semibold tracking-tight text-ink">
-                  {formatBDT(plan.totalPriceMinor / 100)}
-                </p>
-                <p className="text-[13px] text-ink-muted">
-                  {plan.months === 1 ? "paid once for 1 month" : `paid once for ${plan.months} months`}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+        <section aria-label="Plans">
+          <PlanCards
+            plans={data.plans}
+            currentCode={current?.planCode ?? null}
+            ctaFor={(plan) =>
+              plan.months === 0
+                ? null
+                : { label: "Contact support to start", href: "/dashboard/support" }
+            }
+          />
         </section>
       ) : null}
 
