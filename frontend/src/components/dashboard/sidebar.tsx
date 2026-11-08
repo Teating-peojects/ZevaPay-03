@@ -142,7 +142,7 @@ export function Sidebar({
         )}
       >
         {showLabels ? (
-          <Logo href="/" showTagline={!mobile} />
+          <Logo href="/" />
         ) : (
           <Logo href="/" />
         )}

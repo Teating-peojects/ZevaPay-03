@@ -43,10 +43,9 @@ export function SiteFooter() {
       <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-1">
-            <Logo href="/" showTagline />
+            <Logo href="/" />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-ink-muted">
-              Simple payment management for Bangladeshi merchants using bKash,
-              Nagad, Rocket, and Upay.
+              Payment confirmation for shops that take bKash and Nagad.
             </p>
           </div>
 

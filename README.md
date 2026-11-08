@@ -1,6 +1,6 @@
 # ZevaPay
 
-**Simple Payment Management** for Bangladeshi merchants.
+Payment confirmation for Bangladeshi shops that take bKash and Nagad.
 
 ZevaPay connects a merchant's mobile financial services accounts (bKash,
 Nagad, Rocket, Upay) to an Android SMS Bridge device. The device reads the

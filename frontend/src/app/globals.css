@@ -433,6 +433,27 @@
   }
 }
 
+/* Home page hero: the deep blues and cyan of the ZevaPay logo. */
+.zp-hero {
+  background:
+    radial-gradient(60rem 30rem at 85% 10%, rgb(0 212 255 / 0.28), transparent 60%),
+    radial-gradient(50rem 30rem at 10% 110%, rgb(10 60 255 / 0.55), transparent 60%),
+    linear-gradient(160deg, #03084a 0%, #06196f 55%, #0a2bd6 130%);
+}
+/* The three speed lines from the logo, drawn large and faint behind the hero. */
+.zp-speedlines::before,
+.zp-speedlines::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  height: 14px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, rgb(0 212 255 / 0.5), rgb(10 60 255 / 0));
+  pointer-events: none;
+}
+.zp-speedlines::before { bottom: 9%; width: 30%; z-index: 0; }
+.zp-speedlines::after  { bottom: 4%;  width: 20%; z-index: 0; }
+
 /* ZevaPay loader: the Z holds still and its speed lines run left to right. */
 @keyframes zp-line-flow {
   0%   { transform: translateX(-70%); opacity: 0; }

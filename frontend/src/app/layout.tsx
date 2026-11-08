@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "ZevaPay — Simple Payment Management",
+    default: "ZevaPay: know the moment a bKash or Nagad payment lands",
     template: "%s | ZevaPay",
   },
   description:
@@ -34,17 +34,17 @@ export const metadata: Metadata = {
     "SMS bridge",
   ],
   openGraph: {
-    title: "ZevaPay — Simple Payment Management",
+    title: "ZevaPay: know the moment a bKash or Nagad payment lands",
     description:
-      "Connect your payment accounts, pair an Android device, and keep every payment notification in one clear dashboard.",
+      "ZevaPay reads the payment SMS on your phone, matches the TrxID and amount, and tells your website the order is paid.",
     type: "website",
     siteName: "ZevaPay",
   },
   twitter: {
     card: "summary_large_image",
-    title: "ZevaPay — Simple Payment Management",
+    title: "ZevaPay: know the moment a bKash or Nagad payment lands",
     description:
-      "Connect your payment accounts, pair an Android device, and keep every payment notification in one clear dashboard.",
+      "ZevaPay reads the payment SMS on your phone, matches the TrxID and amount, and tells your website the order is paid.",
   },
 };
 
