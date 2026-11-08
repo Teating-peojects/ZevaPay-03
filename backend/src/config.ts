@@ -1,5 +1,6 @@
 import { z } from "zod";
 import "dotenv/config";
+import { isValidAppUrl } from "./lib/app-download.js";
 
 /**
  * Runtime configuration. Every value is validated at boot so a misconfigured
@@ -25,6 +26,16 @@ const envSchema = z.object({
 
   /** Public address of the web app. Checkout links are built from it. */
   PUBLIC_APP_URL: z.string().url().optional(),
+
+  /** Where the Android app can be downloaded (https address or a /path on this site). Optional. */
+  ANDROID_APP_URL: z
+    .string()
+    .trim()
+    .optional()
+    .refine((value) => !value || isValidAppUrl(value), {
+      message: "ANDROID_APP_URL must be an https address or a path starting with /",
+    }),
+  ANDROID_APP_VERSION: z.string().trim().max(40).optional(),
 
   /** Origins allowed to call the API with credentials. */
   CORS_ORIGINS: z.string().default("http://localhost:3000"),
@@ -73,6 +84,7 @@ export const config = {
   corsOrigins: env.CORS_ORIGINS.split(",")
     .map((origin) => origin.trim())
     .filter(Boolean),
+  androidApp: { url: env.ANDROID_APP_URL, version: env.ANDROID_APP_VERSION },
   autoAcceptConfidence: env.AUTO_ACCEPT_CONFIDENCE,
   logLevel: env.LOG_LEVEL,
 } as const;

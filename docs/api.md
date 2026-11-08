@@ -237,6 +237,10 @@ checkout page. See [checkout-integration.md](./checkout-integration.md).
 | GET | `/public/checkout/:token` | link secret | What the customer's page shows |
 | POST | `/public/checkout/:token/trxid` | link secret | The customer's TrxID |
 
+### Phone app download
+
+`GET /api/v1/merchant/app` (merchant session) returns `{ "android": { "available", "url", "version" } }`. `available` is false until `ANDROID_APP_URL` is set. See `docs/operations.md`.
+
 ### Support contacts
 
 A merchant can show how customers reach them (WhatsApp, Telegram, a Facebook page, Instagram). The checkout page offers these when a customer is stuck: after two TrxIDs that did not work, when a TrxID was already used, when five tries are used up, and when a payment is in review, expired or closed.

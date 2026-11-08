@@ -27,6 +27,7 @@ export const merchantNav: NavSection[] = [
     items: [
       { label: "Payment Accounts", href: "/dashboard/accounts", icon: "paymentAccounts" },
       { label: "Devices", href: "/dashboard/devices", icon: "devices" },
+      { label: "Phone app", href: "/dashboard/app", icon: "phoneApp" },
     ],
   },
   {

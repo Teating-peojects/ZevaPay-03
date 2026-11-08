@@ -353,3 +353,7 @@ export interface ApiSupport {
   support: { whatsapp: string | null; telegram: string | null; facebook: string | null; instagram: string | null };
   links: { whatsapp: string | null; telegram: string | null; facebook: string | null; instagram: string | null };
 }
+
+export interface ApiAppDownload {
+  android: { available: boolean; url: string | null; version: string | null };
+}

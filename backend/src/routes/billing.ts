@@ -5,6 +5,8 @@ import { recordAudit } from "../lib/audit.js";
 import { NotFoundError } from "../lib/errors.js";
 import { PLAN_CATALOG, totalPriceMinor } from "../lib/plans.js";
 import { activatePlan, getAccess } from "../lib/subscriptions.js";
+import { androidAppInfo } from "../lib/app-download.js";
+import { config } from "../config.js";
 
 const READ_ROLES = ["MERCHANT_OWNER", "MERCHANT_ADMIN", "MERCHANT_MANAGER", "MERCHANT_VIEWER"];
 
@@ -30,6 +32,11 @@ export async function registerBillingRoutes(app: FastifyInstance): Promise<void>
   app.get("/api/v1/merchant/billing", read, async (request, reply) => {
     const merchantId = await app.resolveMerchantId(request);
     return reply.send({ plans: catalog(), subscription: await getAccess(merchantId) });
+  });
+
+  // Where to download the phone app. `available` is false until it is configured.
+  app.get("/api/v1/merchant/app", read, async (_request, reply) => {
+    return reply.send({ android: androidAppInfo(config.androidApp.url, config.androidApp.version) });
   });
 
   // An administrator starts or renews a plan after the merchant has paid.

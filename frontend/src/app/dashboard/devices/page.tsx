@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { Eye, MonitorSmartphone, Pencil, PlugZap, Unplug } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { DataTable, type Column } from "@/components/shared/data-table";
@@ -149,6 +150,14 @@ export default function DevicesPage() {
             }}
           >
             <PlugZap className="size-4" aria-hidden="true" />
+
+      <p className="-mt-2 text-[13px] text-ink-soft">
+        New phone?{" "}
+        <Link href="/dashboard/app" className="font-medium text-brand-link underline-offset-2 hover:underline">
+          Install the app
+        </Link>{" "}
+        first, then connect it here.
+      </p>
             Connect device
           </Button>
         }

@@ -79,6 +79,8 @@ The front end listens on `http://localhost:3000`.
 | `JWT_REFRESH_TTL`        | `30d`                      | Refresh-token lifetime                         |
 | `CORS_ORIGINS`           | `http://localhost:3000`    | Comma-separated allow-list                     |
 | `PUBLIC_APP_URL`         | first `CORS_ORIGINS` entry | Address customers open for hosted checkout     |
+| `ANDROID_APP_URL`        | empty (not available)      | Where merchants download the app (see below)   |
+| `ANDROID_APP_VERSION`    | empty                      | Shown next to the download button              |
 | `AUTO_ACCEPT_CONFIDENCE` | `0.9`                      | Parser threshold, 0–1                          |
 | `LOG_LEVEL`              | `info`                     |                                                |
 
@@ -293,3 +295,15 @@ depends on them being kept forever.
 The API process sends queued webhooks itself, every 15 seconds. Run one API instance, or several: a delivery is claimed before it is sent, so it is not sent twice at once. If the process is stopped, queued events wait in the database and go out when it starts again.
 
 Signing secrets are stored in the database as text, because signing needs the secret itself. Protect database backups accordingly. Outbound requests are refused when the address resolves to a private or local network, so the API server cannot be pointed at your internal services.
+
+## Adding the Android app for download
+
+The dashboard has a **Phone app** page. Until an address is set it says the app is not available yet.
+
+When the app is ready (build the release APK in Android Studio, see `android/README.md`):
+
+1. Put the file where it can be downloaded: either upload it anywhere that serves it over **https**, or copy it into `frontend/public/downloads/` so it is served by the web app as `/downloads/zevapay-sms.apk`.
+2. Set `ANDROID_APP_URL` in `backend/.env` to that address (an https address, or the `/downloads/...` path), and optionally `ANDROID_APP_VERSION`.
+3. Restart the API. The Download button appears on the Phone app page. No rebuild of the web app is needed.
+
+A website cannot install an app by itself. The button downloads the file, and the person taps it to install; Android asks them to allow installs from their browser. Keep the APK signed with the same key for every release, or phones will refuse to update the app.
