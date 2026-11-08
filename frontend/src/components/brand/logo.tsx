@@ -3,8 +3,8 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 /**
- * ZevaPay wordmark. Original typography-based mark — the icon is a simple
- * geometric glyph, not a third-party logo.
+ * ZevaPay logo: the app icon followed by the name set in live text, so the name
+ * stays readable in both light and dark themes.
  */
 export function Logo({
   className,
@@ -19,28 +19,14 @@ export function Logo({
 }) {
   const mark = (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
-      <span
-        className={cn(
-          "flex size-9 shrink-0 items-center justify-center rounded-lg",
-          variant === "light" ? "bg-white/15" : "bg-brand-solid",
-        )}
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          className="size-5"
-          aria-hidden="true"
-        >
-          {/* Stylised payment/flow glyph: three ascending strokes. */}
-          <path
-            d="M5 16.5v-4M10 16.5v-8M15 16.5v-11M20 16.5V7"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            opacity="0.95"
-          />
-        </svg>
-      </span>
+      {/* eslint-disable-next-line @next/next/no-img-element -- a small fixed brand image */}
+      <img
+        src="/brand/zevapay-icon.png"
+        alt=""
+        width={36}
+        height={36}
+        className="size-9 shrink-0"
+      />
 
       <span className="flex flex-col leading-none">
         <span
