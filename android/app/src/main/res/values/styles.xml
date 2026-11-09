@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Logo-blue theme: a dark navy status bar and a light, cool-tinted
+         background behind the hand-drawn UI in MainActivity. -->
+    <style name="Theme.ZevaPay" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/brand_navy</item>
+        <item name="android:windowBackground">@color/canvas</item>
+    </style>
+</resources>

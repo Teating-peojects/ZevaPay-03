@@ -4,15 +4,19 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import android.text.InputType
+import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -29,7 +33,10 @@ import org.json.JSONObject
 class MainActivity : Activity() {
     private lateinit var store: Store
     private lateinit var queue: Queue
+    /** Outer column: the brand header plus the scrolling body below it. */
     private lateinit var root: LinearLayout
+    /** Everything other than the header is added here. */
+    private lateinit var body: LinearLayout
     private val background = Executors.newSingleThreadExecutor()
     private var repairing = false
     private var step = 1
@@ -42,6 +49,26 @@ class MainActivity : Activity() {
     /** Set once we have shown Android's permission dialogs in this run. */
     private var askedPermissions = false
 
+    // ----------------------------------------------------------------- brand
+
+    private object Brand {
+        const val NAVY = 0xFF03084A.toInt()
+        const val SOLID = 0xFF0A3CFF.toInt()
+        const val SOLID_DARK = 0xFF0626B8.toInt()
+        const val CYAN = 0xFF00D4FF.toInt()
+        const val CYAN_LIGHT = 0xFFBFE9FF.toInt()
+        const val INK = 0xFF0F172A.toInt()
+        const val INK_MUTED = 0xFF5B6B8C.toInt()
+        const val LINE = 0xFFE1E6F5.toInt()
+        const val SURFACE = 0xFFFFFFFF.toInt()
+        const val CANVAS = 0xFFF3F5FC.toInt()
+        const val SUCCESS = 0xFF047857.toInt()
+        const val SUCCESS_TINT = 0xFFE7F8F1.toInt()
+        const val WARNING = 0xFFB45309.toInt()
+        const val WARNING_TINT = 0xFFFFF4E5.toInt()
+        const val WHITE = 0xFFFFFFFF.toInt()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         title = "ZevaPay SMS"
@@ -49,9 +76,18 @@ class MainActivity : Activity() {
         queue = Queue(this)
         root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Brand.CANVAS)
+        }
+        body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(16), dp(16), dp(24))
         }
-        setContentView(ScrollView(this).apply { addView(root) })
+        setContentView(
+            ScrollView(this).apply {
+                setBackgroundColor(Brand.CANVAS)
+                addView(root)
+            },
+        )
     }
 
     override fun onResume() {
@@ -107,7 +143,55 @@ class MainActivity : Activity() {
 
     private fun render() {
         root.removeAllViews()
+        body.removeAllViews()
+        root.addView(header())
+        root.addView(body)
         if (!store.isPaired || store.tokenRejected || repairing) renderConnect() else renderStatus()
+    }
+
+    /** The logo mark, wordmark and a one-line tagline on a navy-to-blue gradient. */
+    private fun header(): View {
+        val tagline = if (store.isPaired && !store.tokenRejected && !repairing) {
+            store.deviceName ?: "This phone is connected"
+        } else {
+            "Payment SMS forwarder"
+        }
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(18), dp(20), dp(18), dp(20))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Brand.NAVY, Brand.SOLID),
+            )
+            addView(
+                ImageView(this@MainActivity).apply {
+                    setImageResource(R.drawable.logo_mark)
+                    layoutParams = LinearLayout.LayoutParams(dp(38), dp(38)).apply { marginEnd = dp(12) }
+                },
+            )
+            addView(
+                LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+                    addView(
+                        TextView(this@MainActivity).apply {
+                            text = "ZevaPay"
+                            textSize = 19f
+                            setTextColor(Brand.WHITE)
+                            setTypeface(typeface, Typeface.BOLD)
+                        },
+                    )
+                    addView(
+                        TextView(this@MainActivity).apply {
+                            text = tagline
+                            textSize = 12f
+                            setTextColor(Brand.CYAN_LIGHT)
+                            setPadding(0, dp(2), 0, 0)
+                        },
+                    )
+                },
+            )
+        }
     }
 
     // ---------------------------------------------------------------- connect
@@ -129,7 +213,7 @@ class MainActivity : Activity() {
         if (step == 1) renderSignIn() else renderPhoneKey()
 
         if (repairing && store.isPaired) {
-            button("Cancel") {
+            outlineButton("Cancel") {
                 repairing = false
                 resetConnect()
                 render()
@@ -144,7 +228,7 @@ class MainActivity : Activity() {
         val pass = field("Password", "", InputType.TYPE_TEXT_VARIATION_PASSWORD)
         connectError?.let { note(it, warning = true) }
 
-        button("Next") {
+        primaryButton("Next") {
             val normalized = UrlRules.normalize(url.text.toString(), allowHttp = BuildConfig.DEBUG)
             val typedEmail = mail.text.toString().trim()
             val typedPassword = pass.text.toString()
@@ -172,13 +256,11 @@ class MainActivity : Activity() {
         val key = field("Phone key", "", InputType.TYPE_TEXT_VARIATION_PASSWORD)
         connectError?.let { note(it, warning = true) }
 
-        root.addView(Button(this).apply {
-            text = if (connecting) "Connecting…" else "Connect"
-            isEnabled = !connecting
-            setOnClickListener { connect(key.text.toString()) }
-        })
+        primaryButton(if (connecting) "Connecting…" else "Connect", enabled = !connecting) {
+            connect(key.text.toString())
+        }
         if (!connecting) {
-            button("Back") {
+            outlineButton("Back") {
                 connectError = null
                 step = 1
                 render()
@@ -205,7 +287,7 @@ class MainActivity : Activity() {
         connecting = true
         render()
 
-        val body = JSONObject()
+        val requestBody = JSONObject()
             .put("email", email)
             .put("password", password)
             .put("deviceKey", key)
@@ -215,7 +297,7 @@ class MainActivity : Activity() {
 
         val target = address
         background.execute {
-            val result = Api.post(target, "/api/v1/device/connect", body, token = null)
+            val result = Api.post(target, "/api/v1/device/connect", requestBody, token = null)
             runOnUiThread {
                 connecting = false
                 when (result) {
@@ -252,9 +334,9 @@ class MainActivity : Activity() {
     // ----------------------------------------------------------------- status
 
     private fun renderStatus() {
-        heading("ZevaPay SMS")
-        note("Connected as ${store.deviceName ?: "this phone"}. This app only forwards payment SMS from " +
-            "bKash, Nagad, Rocket (16216) and Upay. The server decides whether a payment matches.")
+        heading("Status")
+        note("This app only forwards payment SMS from bKash, Nagad, Rocket (16216) and Upay. " +
+            "The server decides whether a payment matches.")
 
         val smsOk = granted(Manifest.permission.RECEIVE_SMS)
         val notifyOk = Alerts.allowed(this)
@@ -287,9 +369,9 @@ class MainActivity : Activity() {
                         "right, choose \"Allow restricted settings\", then Permissions, then SMS, then Allow.",
                     warning = true,
                 )
-                button("Open settings") { openAppSettings() }
+                outlineButton("Open settings") { openAppSettings() }
             } else {
-                button("Allow SMS") {
+                outlineButton("Allow SMS") {
                     askedPermissions = true
                     requestPermissions(arrayOf(Manifest.permission.RECEIVE_SMS), 1)
                 }
@@ -297,7 +379,7 @@ class MainActivity : Activity() {
         }
         if (!notifyOk) {
             val settings = Build.VERSION.SDK_INT < 33 || needsSettings(Manifest.permission.POST_NOTIFICATIONS)
-            button(if (settings) "Open notification settings" else "Allow notifications") {
+            outlineButton(if (settings) "Open notification settings" else "Allow notifications") {
                 if (settings) {
                     startActivity(
                         Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
@@ -309,12 +391,12 @@ class MainActivity : Activity() {
                 }
             }
         }
-        if (!batteryOk) button("Allow running in the background") {
+        if (!batteryOk) outlineButton("Allow running in the background") {
             startActivity(
                 Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")),
             )
         }
-        if (waiting > 0) button("Send now") {
+        if (waiting > 0) outlineButton("Send now") {
             Workers.sendNow(this)
             render()
         }
@@ -339,7 +421,7 @@ class MainActivity : Activity() {
             }
         }
 
-        button("Connect again") {
+        outlineButton("Connect again") {
             resetConnect()
             repairing = true
             render()
@@ -350,58 +432,147 @@ class MainActivity : Activity() {
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 
+    private fun pill(color: Int, corner: Float = dp(12).toFloat()) = GradientDrawable().apply {
+        shape = GradientDrawable.RECTANGLE
+        cornerRadius = corner
+        setColor(color)
+    }
+
+    private fun outline(strokeColor: Int, fillColor: Int = Brand.SURFACE, corner: Float = dp(12).toFloat()) =
+        GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = corner
+            setColor(fillColor)
+            setStroke(dp(1), strokeColor)
+        }
+
     private fun heading(text: String, small: Boolean = false) {
-        root.addView(TextView(this).apply {
+        body.addView(TextView(this).apply {
             this.text = text
-            textSize = if (small) 16f else 22f
-            setPadding(0, dp(if (small) 20 else 4), 0, dp(8))
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            textSize = if (small) 15f else 18f
+            setTextColor(Brand.INK)
+            setPadding(0, dp(if (small) 20 else 6), 0, dp(10))
+            setTypeface(typeface, Typeface.BOLD)
         })
     }
 
     private fun note(text: String, warning: Boolean = false) {
-        root.addView(TextView(this).apply {
+        if (warning) {
+            body.addView(TextView(this).apply {
+                this.text = text
+                textSize = 13f
+                setTextColor(Brand.WARNING)
+                background = outline(Brand.WARNING, Brand.WARNING_TINT, dp(10).toFloat())
+                setPadding(dp(12), dp(10), dp(12), dp(10))
+                val params = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                params.bottomMargin = dp(10)
+                layoutParams = params
+            })
+            return
+        }
+        body.addView(TextView(this).apply {
             this.text = text
             textSize = 13f
-            setPadding(0, dp(2), 0, dp(8))
-            if (warning) setTextColor(0xFFB45309.toInt())
+            setTextColor(Brand.INK_MUTED)
+            setPadding(0, dp(2), 0, dp(10))
         })
     }
 
     private fun line(label: String, value: String, ok: Boolean) {
-        root.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, dp(6), 0, dp(6))
-            addView(TextView(context).apply {
-                text = label
-                textSize = 12f
-                setTextColor(0xFF475569.toInt())
-            })
-            addView(TextView(context).apply {
-                text = value
-                textSize = 15f
-                setTextColor(if (ok) 0xFF047857.toInt() else 0xFFB45309.toInt())
-            })
-        })
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            background = outline(Brand.LINE, Brand.SURFACE, dp(12).toFloat())
+            val params = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            params.bottomMargin = dp(8)
+            layoutParams = params
+        }
+        card.addView(
+            View(this).apply {
+                layoutParams = LinearLayout.LayoutParams(dp(4), LinearLayout.LayoutParams.MATCH_PARENT)
+                setBackgroundColor(if (ok) Brand.SUCCESS else Brand.WARNING)
+            },
+        )
+        card.addView(
+            LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(12), dp(10), dp(12), dp(10))
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                addView(
+                    TextView(context).apply {
+                        text = label
+                        textSize = 11.5f
+                        setTextColor(Brand.INK_MUTED)
+                    },
+                )
+                addView(
+                    TextView(context).apply {
+                        text = value
+                        textSize = 14.5f
+                        setTextColor(if (ok) Brand.SUCCESS else Brand.WARNING)
+                        setTypeface(typeface, Typeface.BOLD)
+                        setPadding(0, dp(2), 0, 0)
+                    },
+                )
+            },
+        )
+        body.addView(card)
     }
 
     private fun field(label: String, initial: String, inputType: Int): EditText {
-        root.addView(TextView(this).apply {
+        body.addView(TextView(this).apply {
             text = label
             textSize = 12f
-            setPadding(0, dp(8), 0, 0)
+            setTextColor(Brand.INK_MUTED)
+            setPadding(0, dp(8), 0, dp(4))
         })
         return EditText(this).apply {
             setText(initial)
             this.inputType = InputType.TYPE_CLASS_TEXT or inputType
             setSingleLine()
-            root.addView(this)
+            setTextColor(Brand.INK)
+            setHintTextColor(Brand.INK_MUTED)
+            background = outline(Brand.LINE, Brand.SURFACE, dp(10).toFloat())
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            val params = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            params.bottomMargin = dp(4)
+            layoutParams = params
+            body.addView(this)
         }
     }
 
-    private fun button(text: String, onClick: () -> Unit) {
-        root.addView(Button(this).apply {
+    /** The main call to action: a solid logo-blue button with white text. */
+    private fun primaryButton(text: String, enabled: Boolean = true, onClick: () -> Unit) {
+        body.addView(Button(this).apply {
             this.text = text
+            isAllCaps = false
+            isEnabled = enabled
+            setTextColor(Brand.WHITE)
+            setTypeface(typeface, Typeface.BOLD)
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Brand.SOLID, Brand.SOLID_DARK),
+            ).apply { cornerRadius = dp(12).toFloat() }
+            alpha = if (enabled) 1f else 0.6f
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+            val params = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            params.topMargin = dp(6)
+            layoutParams = params
+            setOnClickListener { onClick() }
+        })
+    }
+
+    /** A secondary action: an outlined button in logo blue. */
+    private fun outlineButton(text: String, onClick: () -> Unit) {
+        body.addView(Button(this).apply {
+            this.text = text
+            isAllCaps = false
+            setTextColor(Brand.SOLID)
+            setTypeface(typeface, Typeface.BOLD)
+            background = outline(Brand.SOLID, Brand.SURFACE, dp(12).toFloat())
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+            val params = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            params.topMargin = dp(6)
+            layoutParams = params
             setOnClickListener { onClick() }
         })
     }
