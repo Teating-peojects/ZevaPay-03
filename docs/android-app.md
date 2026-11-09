@@ -92,6 +92,31 @@ allow "install unknown apps"), or to apply to Play with a Permissions
 Declaration and be prepared for a refusal. Decide this first, because it
 changes how updates and trust work.
 
+## Play Protect blocks the install
+
+On many phones, installing the APK shows "App blocked to protect your device"
+and the install fails with "App not installed". Google Play Protect does this
+for apps installed from a download (a browser, WhatsApp, a file sent in chat)
+that ask for SMS permission, which this app must. It is a precaution, not a
+verdict on the app, and nothing in the app's code can switch it off.
+
+Ways around it, from least to most invasive:
+
+1. Install from a computer: connect the phone by USB and run the app from
+   Android Studio, or use `adb install app-debug.apk`. Installs made this way
+   are not treated as downloads.
+2. If the warning has "Details" and then "Install anyway", use that.
+3. In the Play Store, open Play Protect settings, turn off "Scan apps with Play
+   Protect", install, then turn it back on.
+
+After installing, on Android 13 and later the SMS permission may be greyed out
+for an app installed outside the Play Store. Open Settings, Apps, ZevaPay SMS,
+the three dots, and choose "Allow restricted settings", then grant SMS.
+
+The lasting fix is distribution through a store Play Protect trusts, which the
+SMS permission makes hard (see above). Until then, tell merchants about this
+screen. The dashboard's Phone app page already does.
+
 ## How to test without a phone
 
 `npm run simulate` in `backend/` plays the same flow (sign in, get a code, pair,

@@ -114,6 +114,14 @@ export default function PhoneAppPage() {
             Android shows a warning for apps that do not come from the Play Store. That is expected here.
             Do not install a copy that someone sends you in a chat or from another site.
           </Alert>
+
+          <Alert tone="info" title="Android says “App blocked to protect your device”?">
+            Google Play Protect blocks apps that read SMS when they are installed from
+            a download, and this app reads SMS. It is not a sign the app is harmful.
+            Open the Play Store, tap your profile picture, then Play Protect, then the
+            settings gear, and turn off “Scan apps with Play Protect”. Install the app,
+            then turn it back on. If a message says “Install anyway”, tap Details first.
+          </Alert>
         </CardContent>
       </Card>
     </div>
