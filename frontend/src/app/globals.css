@@ -193,12 +193,12 @@
   --zp-fg-muted: #64748b;
   --zp-fg-subtle: #94a3b8;
 
-  --zp-brand-ink: #223b67;
-  --zp-brand-solid: #223b67;
-  --zp-brand-solid-hover: #1b2e51;
-  --zp-brand-tint: #eef3fa;
-  --zp-brand-link: #223b67;
-  --zp-brand-link-hover: #152440;
+  --zp-brand-ink: #0626b8;
+  --zp-brand-solid: #0a3cff;
+  --zp-brand-solid-hover: #0831d0;
+  --zp-brand-tint: #eaf0ff;
+  --zp-brand-link: #0a3cff;
+  --zp-brand-link-hover: #0626b8;
 
   --zp-on-brand: #e8eef8;
   --zp-on-brand-muted: #b4c9e5;
@@ -226,7 +226,7 @@
   --zp-warning-line: #fde68a;
   --zp-danger-line: #fecaca;
   --zp-info-line: #bfdbfe;
-  --zp-brand-line: #d8e4f3;
+  --zp-brand-line: #cdd9ff;
 
   --zp-overlay: rgb(15 23 42 / 0.45);
 
@@ -258,10 +258,10 @@
   --zp-fg-subtle: #6b7889;
 
   --zp-brand-ink: #9dbbe4;
-  --zp-brand-solid: #2f5fb0;
-  --zp-brand-solid-hover: #3a6dc4;
+  --zp-brand-solid: #2f63ff;
+  --zp-brand-solid-hover: #4a77ff;
   --zp-brand-tint: #14203a;
-  --zp-brand-link: #9dbbe4;
+  --zp-brand-link: #8fb0ff;
   --zp-brand-link-hover: #c3d6f0;
 
   --zp-on-brand: #e2eaf6;

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PlanCards } from "@/components/billing/plan-cards";
 import { PublicLayout } from "@/components/marketing/public-layout";
-import { Badge } from "@/components/ui/badge";
+import { PageHero } from "@/components/marketing/page-hero";
 import { PUBLIC_PLANS } from "@/lib/plans";
 
 export const metadata: Metadata = {
@@ -13,21 +13,10 @@ export const metadata: Metadata = {
 export default function PricingPage() {
   return (
     <PublicLayout>
-      <section className="border-b border-line bg-elevated">
-        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
-          <Badge tone="brand">Pricing</Badge>
-          <h1 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight text-ink sm:text-4xl sm:leading-[1.15]">
-            Simple pricing. Pay for the time you want.
-          </h1>
-          <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink-soft sm:text-lg">
-            Start free for 30 days. Every plan has every feature, so the only
-            choice is how long you pay for. The longer the plan, the less each
-            month costs.
-          </p>
-        </div>
-      </section>
+      <PageHero title="Free for 30 days." lead="Then pay for the time you want. Every plan has everything." />
 
-      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+      <section className="zp-light-sheen">
+      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-14">
         <PlanCards
           plans={PUBLIC_PLANS}
           ctaFor={(plan) =>
@@ -37,12 +26,11 @@ export default function PricingPage() {
           }
         />
         <p className="mt-6 max-w-2xl text-[13px] leading-relaxed text-ink-muted">
-          Prices are in Bangladeshi taka and paid in advance. To start a plan,
-          pay for the period you want and contact ZevaPay support; an
-          administrator activates it. When your plan ends, new payments pause
-          until you renew. Payments you already created, and SMS your phone
-          receives, are still recorded.
+          Prices are in taka, paid in advance. Pay, contact support, and an
+          administrator activates your plan. If a plan ends, new payments
+          pause until you renew; SMS your phone receives are still recorded.
         </p>
+      </div>
       </section>
     </PublicLayout>
   );

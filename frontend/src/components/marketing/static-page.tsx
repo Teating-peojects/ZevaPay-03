@@ -1,5 +1,6 @@
 import * as React from "react";
 import Link from "next/link";
+import { PageHero } from "@/components/marketing/page-hero";
 import { PublicLayout } from "@/components/marketing/public-layout";
 
 export interface StaticSection {
@@ -22,20 +23,13 @@ export function StaticPage({
 }) {
   return (
     <PublicLayout>
-      <section className="border-b border-line bg-elevated">
-        <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-14">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-            {title}
-          </h1>
-          <p className="mt-3 text-base leading-relaxed text-ink-soft sm:text-lg">{intro}</p>
-        </div>
-      </section>
+      <PageHero title={title} lead={intro} />
 
       <section className="border-b border-line">
         <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-14">
           <div className="flex flex-col gap-8">
             {sections.map((section) => (
-              <div key={section.heading}>
+              <div key={section.heading} className="rounded-2xl border border-line bg-surface p-6 shadow-sm">
                 <h2 className="text-lg font-semibold tracking-tight text-ink">
                   {section.heading}
                 </h2>
@@ -46,7 +40,7 @@ export function StaticPage({
             ))}
           </div>
 
-          <div className="mt-12 rounded-lg border border-line bg-elevated px-5 py-5">
+          <div className="mt-10 rounded-2xl bg-elevated px-5 py-5">
             <p className="text-[13px] leading-relaxed text-ink-muted">
               This page describes the ZevaPay service as it operates today.
               It is a summary for your convenience and does not replace a
