@@ -52,7 +52,11 @@ class SendWorker(context: Context, params: WorkerParameters) : Worker(context, p
                 .put("provider", message.provider.apiName)
 
             when (val result = Api.post(base, "/api/v1/device/notifications", body, token)) {
-                is ApiResult.Ok -> queue.markSent(message.id, outcomeOf(result.json))
+                is ApiResult.Ok -> {
+                    val outcome = outcomeOf(result.json)
+                    queue.markSent(message.id, outcome)
+                    Alerts.paymentResult(applicationContext, message.provider, outcome)
+                }
                 is ApiResult.Rejected -> queue.markFailed(message.id, result.message)
                 is ApiResult.Retry -> {
                     queue.noteRetry(message.id, result.reason)
@@ -61,6 +65,11 @@ class SendWorker(context: Context, params: WorkerParameters) : Worker(context, p
                 ApiResult.Unauthorized -> {
                     // Keep the queue. After pairing again, the messages go out.
                     store.markTokenRejected()
+                    Alerts.needsAttention(
+                        applicationContext,
+                        "This phone was disconnected",
+                        "Open ZevaPay SMS and connect again. Payments are waiting.",
+                    )
                     return Result.success()
                 }
             }
@@ -86,6 +95,11 @@ class HeartbeatWorker(context: Context, params: WorkerParameters) : Worker(conte
             }
             ApiResult.Unauthorized -> {
                 store.markTokenRejected()
+                Alerts.needsAttention(
+                    applicationContext,
+                    "This phone was disconnected",
+                    "Open ZevaPay SMS and connect again. Payments are waiting.",
+                )
                 Result.success()
             }
             is ApiResult.Rejected -> Result.success()

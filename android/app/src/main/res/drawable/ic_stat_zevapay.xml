@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- A plain Z. Status-bar icons are one flat colour. -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M6,4 H20 V7.5 L11,16.5 H20 V20 H4 V16.5 L13,7.5 H6 Z" />
+</vector>

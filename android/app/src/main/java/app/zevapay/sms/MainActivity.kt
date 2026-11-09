@@ -39,6 +39,8 @@ class MainActivity : Activity() {
     private var password = ""
     private var connectError: String? = null
     private var connecting = false
+    /** Set once we have shown Android's permission dialogs in this run. */
+    private var askedPermissions = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,7 +58,11 @@ class MainActivity : Activity() {
         super.onResume()
         if (store.isPaired) {
             Workers.scheduleHeartbeat(this)
-            if (!store.tokenRejected) Workers.sendNow(this)
+            if (!store.tokenRejected) {
+                Workers.sendNow(this)
+                Alerts.clearAttention(this)
+                askForMissingPermissions()
+            }
         }
         render()
     }
@@ -64,6 +70,39 @@ class MainActivity : Activity() {
     override fun onRequestPermissionsResult(code: Int, permissions: Array<out String>, results: IntArray) {
         super.onRequestPermissionsResult(code, permissions, results)
         render()
+    }
+
+    /** The permissions this app cannot do its job without, and whether each is granted. */
+    private fun wanted(): List<String> = buildList {
+        add(Manifest.permission.RECEIVE_SMS)
+        if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    private fun granted(permission: String) =
+        checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+
+    /**
+     * Asks for whatever is still missing, once per run, as soon as the phone is
+     * connected. If Android will no longer show the dialog (the user chose
+     * "don't allow", or the app was installed outside the Play Store and
+     * Android restricts it), the status screen shows a button to Settings.
+     */
+    private fun askForMissingPermissions() {
+        if (askedPermissions) return
+        val missing = wanted().filterNot { granted(it) }
+        if (missing.isEmpty()) return
+        askedPermissions = true
+        requestPermissions(missing.toTypedArray(), 1)
+    }
+
+    /** True when asking again would show nothing, so only Settings can help. */
+    private fun needsSettings(permission: String) =
+        askedPermissions && !granted(permission) && !shouldShowRequestPermissionRationale(permission)
+
+    private fun openAppSettings() {
+        startActivity(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")),
+        )
     }
 
     private fun render() {
@@ -191,6 +230,7 @@ class MainActivity : Activity() {
                             resetConnect()
                             Workers.scheduleHeartbeat(this)
                             Workers.sendNow(this)
+                            askForMissingPermissions()
                         }
                     }
                     is ApiResult.Rejected -> {
@@ -216,11 +256,17 @@ class MainActivity : Activity() {
         note("Connected as ${store.deviceName ?: "this phone"}. This app only forwards payment SMS from " +
             "bKash, Nagad, Rocket (16216) and Upay. The server decides whether a payment matches.")
 
-        val smsOk = checkSelfPermission(Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
+        val smsOk = granted(Manifest.permission.RECEIVE_SMS)
+        val notifyOk = Alerts.allowed(this)
         val batteryOk = (getSystemService(POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(packageName)
         val waiting = queue.pendingCount()
 
         line("SMS permission", if (smsOk) "Allowed" else "Not allowed. Payments will be missed.", ok = smsOk)
+        line(
+            "Notifications",
+            if (notifyOk) "Allowed" else "Not allowed. You will not be told when a payment needs you.",
+            ok = notifyOk,
+        )
         line(
             "Battery",
             if (batteryOk) "Not restricted" else "Android may stop this app in the background.",
@@ -234,8 +280,34 @@ class MainActivity : Activity() {
             ok = store.lastHeartbeatAt != 0L,
         )
 
-        if (!smsOk) button("Allow SMS") {
-            requestPermissions(arrayOf(Manifest.permission.RECEIVE_SMS), 1)
+        if (!smsOk) {
+            if (needsSettings(Manifest.permission.RECEIVE_SMS)) {
+                note(
+                    "Android is not showing the SMS question. Open settings, tap the three dots at the top " +
+                        "right, choose \"Allow restricted settings\", then Permissions, then SMS, then Allow.",
+                    warning = true,
+                )
+                button("Open settings") { openAppSettings() }
+            } else {
+                button("Allow SMS") {
+                    askedPermissions = true
+                    requestPermissions(arrayOf(Manifest.permission.RECEIVE_SMS), 1)
+                }
+            }
+        }
+        if (!notifyOk) {
+            val settings = Build.VERSION.SDK_INT < 33 || needsSettings(Manifest.permission.POST_NOTIFICATIONS)
+            button(if (settings) "Open notification settings" else "Allow notifications") {
+                if (settings) {
+                    startActivity(
+                        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                            .putExtra(Settings.EXTRA_APP_PACKAGE, packageName),
+                    )
+                } else {
+                    askedPermissions = true
+                    requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 2)
+                }
+            }
         }
         if (!batteryOk) button("Allow running in the background") {
             startActivity(

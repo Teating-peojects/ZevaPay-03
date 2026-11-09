@@ -92,6 +92,22 @@ allow "install unknown apps"), or to apply to Play with a Permissions
 Declaration and be prepared for a refusal. Decide this first, because it
 changes how updates and trust work.
 
+## Permissions
+
+The app asks for two things, right after the phone connects:
+
+- **Receive SMS.** Without it no payment message reaches the app. On Android 13
+  and later, an app installed outside the Play Store may not be allowed to ask;
+  the status screen then explains how to use "Allow restricted settings" and
+  opens the app's settings.
+- **Notifications** (Android 13 and later ask; older versions allow them by
+  default). The app shows a notification when a payment matched, when one needs
+  review, and when the server no longer accepts the phone. Notifications never
+  contain the SMS text, an amount or a TrxID.
+
+The app does not read other apps' notifications, and does not ask for access to
+read old messages. Both would make Play Protect stricter and are not needed.
+
 ## Play Protect blocks the install
 
 On many phones, installing the APK shows "App blocked to protect your device"
