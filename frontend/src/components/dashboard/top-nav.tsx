@@ -76,7 +76,7 @@ export function TopNav({
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-line bg-surface px-4 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 zp-topbar border-b border-line px-4 sm:px-6">
       <button
         type="button"
         onClick={onMenuClick}

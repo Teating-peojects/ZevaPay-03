@@ -21,16 +21,16 @@ export function StatCard({
   className?: string;
 }) {
   const toneStyles = {
-    neutral: "bg-elevated text-ink-soft",
-    success: "bg-success-tint text-success-fg",
-    warning: "bg-warning-tint text-warning-fg",
-    info: "bg-info-tint text-info-fg",
+    neutral: "bg-gradient-to-br from-[#0a3cff] to-[#00a6e0] text-white",
+    success: "bg-gradient-to-br from-emerald-500 to-teal-400 text-white",
+    warning: "bg-gradient-to-br from-amber-500 to-orange-400 text-white",
+    info: "bg-gradient-to-br from-[#0a3cff] to-[#00d4ff] text-white",
   };
 
   return (
     <div
       className={cn(
-        "surface flex flex-col justify-between rounded-xl p-5",
+        "surface zp-card-lift relative flex flex-col justify-between overflow-hidden rounded-2xl p-4",
         className,
       )}
     >
@@ -38,7 +38,7 @@ export function StatCard({
         <p className="text-[13px] font-medium text-ink-muted">{label}</p>
         <span
           className={cn(
-            "flex size-8 shrink-0 items-center justify-center rounded-lg",
+            "flex size-9 shrink-0 items-center justify-center rounded-xl shadow-sm",
             toneStyles[tone],
           )}
         >
@@ -46,11 +46,11 @@ export function StatCard({
         </span>
       </div>
 
-      <p className="mt-3 text-2xl font-semibold tracking-tight text-ink">
+      <p className="mt-2 text-2xl font-semibold tracking-tight text-ink">
         {value}
       </p>
 
-      {hint ? <p className="mt-1.5 text-[13px] text-ink-muted">{hint}</p> : null}
+      {hint ? <p className="mt-1 text-[12px] leading-snug text-ink-muted">{hint}</p> : null}
     </div>
   );
 }

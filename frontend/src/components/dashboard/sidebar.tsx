@@ -125,7 +125,7 @@ export function Sidebar({
   return (
     <div
       className={cn(
-        "flex h-full flex-col border-r border-line bg-surface transition-[width] duration-200",
+        "zp-rail flex h-full flex-col border-r border-white/10 text-white transition-[width] duration-200",
         mobile
           ? cn(
               "fixed inset-y-0 left-0 z-50 w-72 transition-transform duration-200",
@@ -137,14 +137,14 @@ export function Sidebar({
       {/* Header */}
       <div
         className={cn(
-          "flex h-16 shrink-0 items-center border-b border-line px-4",
+          "flex h-16 shrink-0 items-center border-b border-white/10 px-4",
           showLabels ? "justify-between" : "justify-center",
         )}
       >
         {showLabels ? (
-          <Logo href="/" />
+          <Logo href="/" variant="light" />
         ) : (
-          <Logo href="/" />
+          <Logo href="/" variant="light" className="[&>span:last-child]:hidden" />
         )}
 
         {mobile ? (
@@ -152,7 +152,7 @@ export function Sidebar({
             type="button"
             onClick={onNavigate}
             aria-label="Close navigation"
-            className="inline-flex size-8 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-elevated hover:text-ink"
+            className="inline-flex size-8 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/10 hover:text-white"
           >
             <X className="size-5" aria-hidden="true" />
           </button>
@@ -162,7 +162,7 @@ export function Sidebar({
             onClick={toggleCollapsed}
             aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
             aria-pressed={collapsed}
-            className="inline-flex size-8 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-elevated hover:text-ink"
+            className="inline-flex size-8 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/10 hover:text-white"
           >
             {collapsed ? (
               <PanelLeftOpen className="size-4" aria-hidden="true" />
@@ -175,25 +175,25 @@ export function Sidebar({
 
       {/* Workspace */}
       {showLabels ? (
-        <div className="border-b border-line px-3 py-3">
+        <div className="px-3 pt-3">
           <div
             className={cn(
-              "rounded-lg px-3 py-2",
-              variant === "admin" ? "bg-brand-solid" : "bg-sunken",
+              "rounded-xl border px-3 py-2",
+              variant === "admin"
+                ? "border-cyan-300/30 bg-cyan-300/10"
+                : "border-white/10 bg-white/[0.06]",
             )}
           >
             <p
               className={cn(
-                "text-[11px] font-medium tracking-wide uppercase",
-                variant === "admin" ? "text-on-brand-muted" : "text-ink-muted",
+                "text-[11px] font-medium text-cyan-200/80",
               )}
             >
               {variant === "admin" ? "Admin console" : "Merchant"}
             </p>
             <p
               className={cn(
-                "mt-0.5 truncate text-sm font-semibold",
-                variant === "admin" ? "text-white" : "text-ink",
+                "mt-0.5 truncate text-sm font-semibold text-white",
               )}
             >
               {workspaceName}
@@ -208,9 +208,9 @@ export function Sidebar({
         aria-label="Dashboard navigation"
       >
         {sections.map((section, sectionIndex) => (
-          <div key={section.title ?? sectionIndex} className="mb-6 last:mb-0">
+          <div key={section.title ?? sectionIndex} className="mb-4 last:mb-0">
             {section.title && showLabels ? (
-              <p className="mb-2 px-3 text-[11px] font-semibold tracking-wide text-ink-faint uppercase">
+              <p className="mb-1.5 px-3 text-[11px] font-medium text-white/40">
                 {section.title}
               </p>
             ) : null}
@@ -227,17 +227,17 @@ export function Sidebar({
                       aria-current={active ? "page" : undefined}
                       title={showLabels ? undefined : item.label}
                       className={cn(
-                        "flex items-center rounded-lg py-2 text-sm font-medium transition-colors",
+                        "relative flex items-center rounded-xl py-2 text-sm font-medium transition-colors",
                         showLabels ? "gap-2.5 px-3" : "justify-center px-0",
                         active
-                          ? "bg-brand-tint text-brand-ink"
-                          : "text-ink-soft hover:bg-elevated hover:text-ink",
+                          ? "bg-gradient-to-r from-[#0a3cff] to-[#0a3cff]/60 text-white shadow-[0_6px_18px_-6px_rgba(10,60,255,0.8)]"
+                          : "text-white/65 hover:bg-white/10 hover:text-white",
                       )}
                     >
                       <Icon
                         className={cn(
                           "size-4 shrink-0",
-                          active ? "text-brand-link" : "text-ink-muted",
+                          active ? "text-cyan-200" : "text-white/50",
                         )}
                         aria-hidden="true"
                       />
@@ -256,7 +256,7 @@ export function Sidebar({
       </nav>
 
       {/* User footer */}
-      <div className="shrink-0 border-t border-line p-3">
+      <div className="shrink-0 border-t border-white/10 p-3">
         <div className="relative">
           {menuOpen ? (
             <>
@@ -306,7 +306,7 @@ export function Sidebar({
             aria-expanded={menuOpen}
             aria-haspopup="menu"
             className={cn(
-              "flex w-full items-center rounded-lg py-2 text-left transition-colors hover:bg-elevated",
+              "flex w-full items-center rounded-xl py-2 text-left transition-colors hover:bg-white/10",
               showLabels ? "gap-2.5 px-2" : "justify-center px-0",
             )}
           >
@@ -314,16 +314,16 @@ export function Sidebar({
             {showLabels ? (
               <>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold text-ink">
+                  <p className="truncate text-[13px] font-semibold text-white">
                     {user.name}
                   </p>
-                  <p className="truncate text-[12px] text-ink-muted">
+                  <p className="truncate text-[12px] text-white/50">
                     {user.organization}
                   </p>
                 </div>
                 <ChevronDown
                   className={cn(
-                    "size-3.5 shrink-0 text-ink-faint transition-transform",
+                    "size-3.5 shrink-0 text-white/40 transition-transform",
                     menuOpen && "rotate-180",
                   )}
                   aria-hidden="true"

@@ -540,3 +540,25 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Signed-in app: navy rail, glass top bar, gradient hero card. */
+.zp-rail {
+  background:
+    radial-gradient(18rem 14rem at 0% 0%, rgb(0 212 255 / 0.16), transparent 70%),
+    radial-gradient(20rem 16rem at 100% 100%, rgb(10 60 255 / 0.35), transparent 70%),
+    linear-gradient(180deg, #050c5a 0%, #03084a 100%);
+}
+.zp-topbar {
+  background-color: color-mix(in oklab, var(--zp-surface) 78%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+.zp-app-bg {
+  background:
+    radial-gradient(50rem 22rem at 100% -5%, rgb(10 60 255 / 0.07), transparent 65%),
+    radial-gradient(40rem 20rem at 0% 0%, rgb(0 212 255 / 0.06), transparent 65%),
+    var(--zp-canvas);
+}
+.zp-card-lift { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.zp-card-lift:hover { transform: translateY(-2px); border-color: var(--zp-brand-line); box-shadow: 0 10px 30px -12px rgb(10 60 255 / 0.25); }
+@media (prefers-reduced-motion: reduce) { .zp-card-lift:hover { transform: none; } }

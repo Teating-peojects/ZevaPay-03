@@ -21,7 +21,7 @@ export function PageHeader({
       )}
     >
       <div className="min-w-0">
-        <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">
+        <h1 className="text-xl font-semibold tracking-tight text-ink">
           {title}
         </h1>
         {description ? (
@@ -46,6 +46,6 @@ export function PageBody({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col gap-6", className)}>{children}</div>
+    <div className={cn("flex flex-col gap-4", className)}>{children}</div>
   );
 }

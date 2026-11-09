@@ -67,11 +67,36 @@ export function MerchantOverviewScreen({
   const { stats, devices, accounts, recentTransactions } = live;
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        title={`Welcome back, ${firstName}`}
-        description={`${merchantName} · notifications recorded from your connected devices`}
-      />
+    <div className="flex flex-col gap-4">
+      <section className="zp-hero relative overflow-hidden rounded-2xl p-5 text-white sm:p-6">
+        <div className="zp-grid absolute inset-0" aria-hidden="true" />
+        <div className="zp-glow -top-10 right-10 size-40 bg-cyan-300/30" aria-hidden="true" />
+        <div className="relative flex flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm text-white/70">Welcome back, {firstName}</p>
+            <p className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">
+              {formatBDT(stats.totalAmount)}
+            </p>
+            <p className="mt-1 text-[12px] text-white/60">
+              Recorded from notifications · {merchantName}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Link
+              href="/dashboard/transactions"
+              className="rounded-xl bg-white px-3.5 py-2 text-[13px] font-semibold text-[#0626b8] transition-colors hover:bg-white/90"
+            >
+              Transactions
+            </Link>
+            <Link
+              href="/dashboard/devices"
+              className="rounded-xl border border-white/25 bg-white/10 px-3.5 py-2 text-[13px] font-semibold text-white backdrop-blur transition-colors hover:bg-white/20"
+            >
+              Devices
+            </Link>
+          </div>
+        </div>
+      </section>
 
       {stats.pendingReviews > 0 ? (
         <Alert tone="warning" title={`${stats.pendingReviews} to review`}>
@@ -82,7 +107,7 @@ export function MerchantOverviewScreen({
         </Alert>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Recorded amount"
           value={formatBDT(stats.totalAmount)}
@@ -165,7 +190,7 @@ export function MerchantOverviewScreen({
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 gap-6 [&>*]:min-w-0 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 [&>*]:min-w-0 lg:grid-cols-2">
         <Card>
           <CardHeader className="flex-row items-center justify-between gap-3">
             <div>

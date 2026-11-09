@@ -63,7 +63,7 @@ export function DashboardShell({
   }, [mobileNavOpen]);
 
   return (
-    <div className="flex min-h-full bg-canvas">
+    <div className="zp-app-bg flex min-h-full">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-surface focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-ink focus:shadow-lg"
@@ -117,7 +117,7 @@ export function DashboardShell({
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 px-4 py-6 focus:outline-none sm:px-6 sm:py-8"
+          className="flex-1 px-4 py-5 focus:outline-none sm:px-6 sm:py-6"
         >
           <div className="mx-auto max-w-7xl">{children}</div>
         </main>
